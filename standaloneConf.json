@@ -1,0 +1,31 @@
+{
+  "standaloneConf": {
+    "restHost": "http://127.0.0.1:6066",
+    "standaloneParam": {
+      "action": "CreateSubmissionRequest",
+      "appResource": "/opt/spark-2.4.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.4.0.jar",
+      "sparkProperties": {
+            "spark.executor.memory": "1g",
+            "spark.num.executors": "1",
+            "spark.master": "spark://127.0.0.1:7077",
+            "spark.driver.memory": "1g",
+            "spark.driver.cores": "1",
+            "spark.executor.cores": "2",
+            "spark.eventLog.enabled": "true",
+            "spark.app.name": "NEWWWWWWWW NEW PI",
+            "spark.submit.deployMode": "cluster",
+            "spark.driver.extraClassPath": "/opt/spark-2.4.0-bin-hadoop2.7/conf/:/opt/spark-2.4.0-bin-hadoop2.7/jars/spark-core_2.11-2.4.0.jar",
+            "spark.jars": "/opt/spark-2.4.0-bin-hadoop2.7/jars/spark-core_2.11-2.4.0.jar,/opt/spark-2.4.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.4.0.jar",
+            "spark.driver.supervise": "false"
+        },
+      "clientSparkVersion": "2.4.0",
+      "mainClass": "org.apache.spark.examples.SparkPi",
+      "environmentVariables": {
+        "SPARK_ENV_LOADED": "1"
+      },
+      "appArgs": [
+        "80"
+      ]
+    }
+  }
+}

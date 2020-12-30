@@ -1,0 +1,9 @@
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6
+    container_name: hspark-run-postgres
+    ports:
+      - "5432:5432"
+

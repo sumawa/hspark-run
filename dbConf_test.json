@@ -1,0 +1,9 @@
+{
+  "host": "127.0.0.1",
+  "port" : 5432,
+  "name" : "hspark_test",
+  "user" : "sauser",
+  "pass" : "Test123!",
+  "dbType" : "postgresql",
+  "poolSize" : 2
+}

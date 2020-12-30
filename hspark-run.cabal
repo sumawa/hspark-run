@@ -1,0 +1,93 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 663f393bf2e20a73f08e3106ececdfa2bf2a2f110d8f9e80a97a2d6928c81011
+
+name:           hspark-run
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/hspark-run#readme>
+homepage:       https://github.com/githubuser/hspark-run#readme
+bug-reports:    https://github.com/githubuser/hspark-run/issues
+author:         SA
+maintainer:     example@example.com
+copyright:      2020 SA
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/hspark-run
+
+library
+  exposed-modules:
+      Schema, SqlDb, StandaloneRun, HSparkRunModule, TestSqlDb
+--      Schema, SqlDb, Test, TestLayer, TestLib, Config
+  other-modules:
+      Paths_hspark_run
+  hs-source-dirs:
+      src
+      , src/models
+      , src/source/sql
+      , src/runner
+  build-depends:
+      base >=4.7 && <5
+      , aeson
+      , monad-logger
+      , mtl
+      , monad-control
+      , transformers
+      , persistent
+      , persistent-postgresql
+      , persistent-template
+      , text
+      , time
+      , bytestring
+      , wreq
+      , lens
+      , lens-aeson
+      , containers
+      , concurrency
+      , async
+  default-language: Haskell2010
+
+executable hspark-run-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_hspark_run
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , hspark-run
+  default-language: Haskell2010
+
+test-suite hspark-run-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_hspark_run
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , hspark-run
+    , hspec
+    , mtl
+    , aeson
+    , monad-logger
+    , monad-control
+    , persistent
+    , persistent-postgresql
+    , text
+    , bytestring
+    , time
+  default-language: Haskell2010
