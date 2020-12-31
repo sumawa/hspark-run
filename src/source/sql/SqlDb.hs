@@ -24,11 +24,10 @@ module SqlDb (
   , SparkCommand(..)
   , updateSparkAppId
   , allQueuedEx
-  , runAction
-  , runNoLoggingAction
   , readDbConfFromFileT
   , processDbConf
   , fetchJobStatus
+  , runActionWithPool
 ) where
 
 import Data.Int (Int64)
@@ -46,7 +45,7 @@ import Database.Persist (get,getEntity,getJustEntity,insert,delete,selectList,se
 import Database.Persist.Sql (fromSqlKey, toSqlKey)
 import Database.Persist (PersistEntity)
 
-import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT,SqlBackend)
+import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT,SqlBackend, withPostgresqlPool, runSqlPersistMPool)
 
 import Data.ByteString.Char8 (pack,unpack)
 import qualified Data.ByteString.Char8 as C
@@ -96,16 +95,24 @@ localConnStringIO env = do
   dbConf <- runMaybeT $ readDbConfFromFileT env
   processDbConf dbConf
 
-runAction :: ConnectionString -> SqlPersistT (LoggingT IO) a ->  IO a
-runAction connectionString action = runStdoutLoggingT $ withPostgresqlConn connectionString $ \backend ->
-  runReaderT action backend
+--runAction :: ConnectionString -> SqlPersistT (LoggingT IO) a ->  IO a
+--runAction connectionString action = runStdoutLoggingT $ withPostgresqlConn connectionString $ \backend ->
+--  runReaderT action backend
 
-runNoLoggingAction :: ConnectionString -> SqlPersistT (NoLoggingT IO) a ->  IO a
-runNoLoggingAction connectionString action = runNoLoggingT $ withPostgresqlConn connectionString $ \backend ->
-  runReaderT action backend
+runActionWithPool connectionString action = runStdoutLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
+  liftIO $ do
+    runSqlPersistMPool action pool
+
+--runNoLoggingAction :: ConnectionString -> SqlPersistT (NoLoggingT IO) a ->  IO a
+--runNoLoggingAction connectionString action = runNoLoggingT $ withPostgresqlConn connectionString $ \backend ->
+--  runReaderT action backend
+
+runNoLoggingActionWPool connectionString action = runNoLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
+  liftIO $ do
+    runSqlPersistMPool action pool
 
 migrateDb :: ConnectionString -> IO ()
-migrateDb connString = runAction connString (runMigration migrateAll)
+migrateDb connString = runActionWithPool connString (runMigration migrateAll)
 
 initSqlDbMain :: String -> IO ()
 initSqlDbMain env = do
@@ -113,15 +120,15 @@ initSqlDbMain env = do
   migrateDb connectionString
 
 createJob :: ConnectionString -> Job -> IO Int64
-createJob connString job = fromSqlKey <$> runAction connString (insert job)
+createJob connString job = fromSqlKey <$> runActionWithPool connString (insert job)
 
 deleteJob :: ConnectionString -> Int64 -> IO ()
-deleteJob connString uuid = runAction connString (delete jobKey) where
+deleteJob connString uuid = runActionWithPool connString (delete jobKey) where
   jobKey :: Key Job
   jobKey = toSqlKey uuid
 
 fetchJob :: ConnectionString -> Int64 -> IO (Maybe Job)
-fetchJob connString jid = runAction connString (get (toSqlKey jid))
+fetchJob connString jid = runActionWithPool connString (get (toSqlKey jid))
 
 fetchJobStatus :: ConnectionString -> Int64 -> IO (Maybe String)
 fetchJobStatus connString jid = do
@@ -136,13 +143,13 @@ jobsAllQueuedEx = do
 
 allQueuedEx :: ConnectionString -> ExceptT String IO [Job]
 allQueuedEx connString = ExceptT $  do
-  result <- try(runNoLoggingAction connString (jobsAllQueuedEx)) :: IO (Either SomeException [Job])
+  result <- try(runNoLoggingActionWPool connString (jobsAllQueuedEx)) :: IO (Either SomeException [Job])
   case result of
     Left ex  -> return (Left $ "Caught exception  : " ++ (show ex) )
     Right val -> return (Right val)
 
 updateSparkAppId :: ConnectionString -> String -> String -> IO ()
-updateSparkAppId connString uuid sparkAppId = runAction connString (updateWhere [JobUuid ==. uuid][JobSparkJobId =. (Just sparkAppId), JobStatus =. (Just "Submitted")] )
+updateSparkAppId connString uuid sparkAppId = runActionWithPool connString (updateWhere [JobUuid ==. uuid][JobSparkJobId =. (Just sparkAppId), JobStatus =. (Just "Submitted")] )
 
 data DbConf = DbConf{
   host :: String

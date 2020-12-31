@@ -4,7 +4,7 @@ import Control.Concurrent (forkIO, ThreadId, threadDelay)
 import Control.Monad.Logger (runStdoutLoggingT)
 import Control.Monad.Reader (runReaderT)
 import Database.Persist.Postgresql (withPostgresqlConn, runMigrationSilent, ConnectionString)
-import SqlDb (createJob, deleteJob, runAction, runNoLoggingAction, localConnStringIO)
+import SqlDb (createJob, deleteJob, localConnStringIO)
 import Schema (migrateAll)
 
 setupTests :: IO (ConnectionString)

@@ -26,7 +26,7 @@ import Control.Monad.Logger (MonadLogger, runStdoutLoggingT, runNoLoggingT, Logg
 import qualified Data.Text as T
 import Schema (Job(..))
 import Schema
-import SqlDb (migrateDb, createJob, fetchJob, deleteJob, runAction, fetchJobStatus)
+import SqlDb (migrateDb, createJob, fetchJob, deleteJob, fetchJobStatus)
 
 import TestUtils (setupTests)
 
