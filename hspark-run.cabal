@@ -55,6 +55,7 @@ library
       , containers
       , concurrency
       , async
+      , resource-pool
   default-language: Haskell2010
 
 executable hspark-run-exe
@@ -90,4 +91,5 @@ test-suite hspark-run-test
     , text
     , bytestring
     , time
+    , resource-pool
   default-language: Haskell2010

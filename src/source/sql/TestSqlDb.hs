@@ -1,10 +1,10 @@
 module TestSqlDb(
   testCreateJob
   , testDeleteJob
-  , testMultiple
+--  , testMultiple
 ) where
 
-import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT)
+import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT,runSqlPersistMPool)
 import SqlDb (SparkCommand(..),SpResponse(..))
 import Data.ByteString.Lazy.Char8 as Char8
 
@@ -13,7 +13,7 @@ import Data.Time
 
 import Schema (Job)
 import Schema
-import SqlDb (createJob, deleteJob, localConnStringIO,runActionWithPool)
+import SqlDb (createJob, deleteJob, localConnStringIO, retrievePool)
 import Database.Persist (get,insert,delete,selectList,update, updateWhere)
 import Database.Persist (selectList, (==.), (<.), (=.), SelectOpt(..), Entity, entityValues, entityVal)
 
@@ -25,7 +25,8 @@ import Data.Aeson
 testCreateJob :: String -> IO ()
 testCreateJob env =  do
   conn <- localConnStringIO env
-  print conn
+  pool <- retrievePool conn 10
+  print pool
   c <- getCurrentTime
   let scmd = SparkCommand {
     sparkClass = "org.apache.spark.examples.SparkPi"
@@ -36,7 +37,7 @@ testCreateJob env =  do
 --  print sc
 --  print (typeOf sc)
   let j = Job  ( (show c) ++ " ASDFSDF")  sc Nothing Nothing Nothing Nothing Nothing (Just "Queued") c c Nothing Nothing
-  inserted <- createJob conn j
+  inserted <- createJob pool j
   print ""
 
 --testCreateJobWPool :: String -> IO ()
@@ -58,15 +59,17 @@ testCreateJob env =  do
 
 testDeleteJob :: String -> Int64 -> IO()
 testDeleteJob env id = do
-  conn <- localConnStringIO env 
-  deleteJob conn id
+  conn <- localConnStringIO env
+  pool <- retrievePool conn 10
+  deleteJob pool id
 
-testMultiple :: String -> IO ()
-testMultiple env = do
-  connectionString <- localConnStringIO env
-  runActionWithPool connectionString $ do
-    entityJobs <- selectList [JobStatus ==. Just "Queued"][]
-    let c = fmap (\x ->  entityVal x) entityJobs
-    liftIO $ print (Prelude.length c)
-    liftIO $ print c
+--testMultiple :: String -> IO ()
+--testMultiple env = do
+--  connectionString <- localConnStringIO env
+--  pool <- retrievePool connectionString 10
+--  runSqlPersistMPool ( $ do
+--    entityJobs <- selectList [JobStatus ==. Just "Queued"][]
+--    let c = fmap (\x ->  entityVal x) entityJobs
+--    liftIO $ print (Prelude.length c)
+--    liftIO $ print c ) pool
 

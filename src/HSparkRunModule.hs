@@ -30,9 +30,10 @@ import Control.Monad
 
 import Data.Aeson
 
-import SqlDb (SpResponse(..), allQueuedEx, localConnStringIO, SparkCommand, updateSparkAppId)
+import SqlDb (SpResponse(..), allQueuedEx, localConnStringIO, SparkCommand, updateSparkAppId, retrievePool)
 import StandaloneRun (StandaloneConf(..), Wrapper(..), StandaloneParam, hardcodedConf, generateStandaloneParam, post_StandaloneSubmitE)
 import Schema
+--import Data.Pool
 
 import qualified Data.Text as TT
 import qualified Data.ByteString.Lazy.Char8 as LBC
@@ -52,7 +53,8 @@ import Data.Time
 runJobs :: String -> IO ()
 runJobs env = do
   connectionString <- localConnStringIO env
-  jobs <- runExceptT (allQueuedEx connectionString)
+  pool <- retrievePool connectionString 20
+  jobs <- runExceptT (allQueuedEx pool)
   processJobsT env jobs
 
 -- Alias for uuid String ?
@@ -65,7 +67,8 @@ submitJobEx env uuid sp = do
 processSpResponse :: String -> String -> Either String SpResponse -> IO ()
 processSpResponse env uuid (Right spResp) = do
   connectionString <- localConnStringIO env
-  updateSparkAppId connectionString uuid (submissionId spResp)
+  pool <- retrievePool connectionString 10
+  updateSparkAppId pool uuid (submissionId spResp)
 processSpResponse env uuid (Left e) = putStrLn ("PROCESS SUBMIT failed with error: " ++ (show e))
 
 readStandaloneConfFromFileT :: MaybeT IO StandaloneConf

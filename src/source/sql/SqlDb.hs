@@ -18,6 +18,7 @@ module SqlDb (
   , deleteJob
   , hardCodedConnString
   , localConnStringIO
+  , retrievePool
   , migrateDb
   , fetchJob
   , SpResponse(..)
@@ -27,7 +28,6 @@ module SqlDb (
   , readDbConfFromFileT
   , processDbConf
   , fetchJobStatus
-  , runActionWithPool
 ) where
 
 import Data.Int (Int64)
@@ -46,7 +46,7 @@ import Database.Persist.Sql (fromSqlKey, toSqlKey)
 import Database.Persist (PersistEntity)
 
 import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT,SqlBackend, withPostgresqlPool, runSqlPersistMPool)
-
+import Data.Pool (Pool)
 import Data.ByteString.Char8 (pack,unpack)
 import qualified Data.ByteString.Char8 as C
 
@@ -99,9 +99,14 @@ localConnStringIO env = do
 --runAction connectionString action = runStdoutLoggingT $ withPostgresqlConn connectionString $ \backend ->
 --  runReaderT action backend
 
-runActionWithPool connectionString action = runStdoutLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
-  liftIO $ do
-    runSqlPersistMPool action pool
+retrievePool connectionString poolSize = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool ->
+  do return pool
+
+--runActionWithPool pool action = runSqlPersistMPool (get (toSqlKey jid)) pool
+
+--runActionWithPool connectionString action = runStdoutLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
+--  liftIO $ do
+--    runSqlPersistMPool action pool
 
 --runNoLoggingAction :: ConnectionString -> SqlPersistT (NoLoggingT IO) a ->  IO a
 --runNoLoggingAction connectionString action = runNoLoggingT $ withPostgresqlConn connectionString $ \backend ->
@@ -111,28 +116,36 @@ runNoLoggingActionWPool connectionString action = runNoLoggingT $ withPostgresql
   liftIO $ do
     runSqlPersistMPool action pool
 
-migrateDb :: ConnectionString -> IO ()
-migrateDb connString = runActionWithPool connString (runMigration migrateAll)
+migrateDb :: (Pool SqlBackend)  -> IO ()
+migrateDb pool = runSqlPersistMPool (runMigration migrateAll) pool
 
 initSqlDbMain :: String -> IO ()
 initSqlDbMain env = do
   connectionString <- localConnStringIO env
-  migrateDb connectionString
+  pool <- retrievePool connectionString 20
+  migrateDb pool
 
-createJob :: ConnectionString -> Job -> IO Int64
-createJob connString job = fromSqlKey <$> runActionWithPool connString (insert job)
+createJob :: (Pool SqlBackend)  -> Job -> IO Int64
+createJob pool job = fromSqlKey <$> runSqlPersistMPool (insert job) pool
 
-deleteJob :: ConnectionString -> Int64 -> IO ()
-deleteJob connString uuid = runActionWithPool connString (delete jobKey) where
+deleteJob :: (Pool SqlBackend)  -> Int64 -> IO ()
+deleteJob pool uuid = runSqlPersistMPool (delete jobKey) pool where
   jobKey :: Key Job
   jobKey = toSqlKey uuid
 
-fetchJob :: ConnectionString -> Int64 -> IO (Maybe Job)
-fetchJob connString jid = runActionWithPool connString (get (toSqlKey jid))
+--fetchJob :: ConnectionString -> Int64 -> IO (Maybe Job)
+--fetchJob connString jid = runActionWithPool connString (get (toSqlKey jid))
 
-fetchJobStatus :: ConnectionString -> Int64 -> IO (Maybe String)
-fetchJobStatus connString jid = do
-  job <- fetchJob connString jid
+fetchJob :: (Pool SqlBackend) -> Int64 -> IO (Maybe Job)
+fetchJob pool jid = runSqlPersistMPool (get (toSqlKey jid)) pool
+
+--runActionWithPoolPool :: (Pool SqlBackend)
+--runActionWithPoolPool pool action = liftIO $ do
+--    runSqlPersistMPool action pool
+
+fetchJobStatus :: (Pool SqlBackend) -> Int64 -> IO (Maybe String)
+fetchJobStatus pool jid = do
+  job <- fetchJob pool jid
   let status = fmap (jobStatus) job
   return (join status)
 
@@ -141,15 +154,15 @@ jobsAllQueuedEx = do
   let c = fmap (\x ->  entityVal x) jobEntityList
   return c
 
-allQueuedEx :: ConnectionString -> ExceptT String IO [Job]
-allQueuedEx connString = ExceptT $  do
-  result <- try(runNoLoggingActionWPool connString (jobsAllQueuedEx)) :: IO (Either SomeException [Job])
+allQueuedEx :: (Pool SqlBackend)  -> ExceptT String IO [Job]
+allQueuedEx pool = ExceptT $  do
+  result <- try(runSqlPersistMPool (jobsAllQueuedEx) pool) :: IO (Either SomeException [Job])
   case result of
     Left ex  -> return (Left $ "Caught exception  : " ++ (show ex) )
     Right val -> return (Right val)
 
-updateSparkAppId :: ConnectionString -> String -> String -> IO ()
-updateSparkAppId connString uuid sparkAppId = runActionWithPool connString (updateWhere [JobUuid ==. uuid][JobSparkJobId =. (Just sparkAppId), JobStatus =. (Just "Submitted")] )
+updateSparkAppId :: (Pool SqlBackend)  -> String -> String -> IO ()
+updateSparkAppId pool uuid sparkAppId = runSqlPersistMPool (updateWhere [JobUuid ==. uuid][JobSparkJobId =. (Just sparkAppId), JobStatus =. (Just "Submitted")] ) pool
 
 data DbConf = DbConf{
   host :: String
