@@ -39,6 +39,7 @@ import Control.Monad (void,join)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
+import Conduit (ResourceT)
 
 import Database.Persist (selectList, (==.), (<.), (=.), SelectOpt(..), Entity, entityValues, entityVal)
 import Database.Persist (get,getEntity,getJustEntity,insert,delete,selectList,selectFirst,update, updateWhere)
@@ -95,18 +96,8 @@ localConnStringIO env = do
   dbConf <- runMaybeT $ readDbConfFromFileT env
   processDbConf dbConf
 
---runAction :: ConnectionString -> SqlPersistT (LoggingT IO) a ->  IO a
---runAction connectionString action = runStdoutLoggingT $ withPostgresqlConn connectionString $ \backend ->
---  runReaderT action backend
-
 retrievePool connectionString poolSize = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool ->
   do return pool
-
---runActionWithPool pool action = runSqlPersistMPool (get (toSqlKey jid)) pool
-
---runActionWithPool connectionString action = runStdoutLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
---  liftIO $ do
---    runSqlPersistMPool action pool
 
 --runNoLoggingAction :: ConnectionString -> SqlPersistT (NoLoggingT IO) a ->  IO a
 --runNoLoggingAction connectionString action = runNoLoggingT $ withPostgresqlConn connectionString $ \backend ->
@@ -142,6 +133,10 @@ fetchJob pool jid = runSqlPersistMPool (get (toSqlKey jid)) pool
 --runActionWithPoolPool :: (Pool SqlBackend)
 --runActionWithPoolPool pool action = liftIO $ do
 --    runSqlPersistMPool action pool
+
+--runActionWithPool :: SqlBackend backend => ReaderT backend (NoLoggingT (ResourceT IO)) a -> Pool backend -> IO aSource
+--runActionWithPool :: ReaderT backend (NoLoggingT (ResourceT IO)) a -> (Pool SqlBackend) -> IO a
+--runActionWithPool  action pool = runSqlPersistMPool action pool
 
 fetchJobStatus :: (Pool SqlBackend) -> Int64 -> IO (Maybe String)
 fetchJobStatus pool jid = do

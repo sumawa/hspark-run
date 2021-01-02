@@ -49,13 +49,13 @@ main = do
   (pool) <- setupTests
   print pool
 
-  hspec $ before (beforeHook1 pool) spec1
-  hspec $ before (beforeHook2 pool) $ after (afterHook pool) $ spec2
-  hspec $ before (beforeHook3 pool) $ after (afterHook3 pool) $ spec3
+  hspec $ before (beforeTest1 pool) spec1
+  hspec $ before (beforeTest2 pool) $ after (afterTest pool) $ spec2
+  hspec $ before (beforeTest3 pool) $ after (afterTest3 pool) $ spec3
   return ()
 
-beforeHook1 :: (Pool SqlBackend) -> IO (Bool)
-beforeHook1 pool = do
+beforeTest1 :: (Pool SqlBackend) -> IO (Bool)
+beforeTest1 pool = do
   inDb <- isJust <$> fetchJob pool 1
   return (inDb)
 
@@ -63,18 +63,18 @@ spec1 :: SpecWith (Bool)
 spec1 = describe "After fetching on an empty database" $ do
   it "There should be no job in Postgres" $ \(inDb) -> inDb `shouldBe` False
 
-afterHook :: (Pool SqlBackend) -> (Bool, Int64) -> IO ()
-afterHook pool (_, key) = do
+afterTest :: (Pool SqlBackend) -> (Bool, Int64) -> IO ()
+afterTest pool (_, key) = do
   deleteJob pool key
   return ()
 
-afterHook3 :: (Pool SqlBackend) -> (Bool, Bool,Int64) -> IO ()
-afterHook3 pool (_, _, key) = do
+afterTest3 :: (Pool SqlBackend) -> (Bool, Bool,Int64) -> IO ()
+afterTest3 pool (_, _, key) = do
   deleteJob pool key
   return ()
 
-beforeHook2 :: (Pool SqlBackend) -> IO (Bool, Int64)
-beforeHook2 pool = do
+beforeTest2 :: (Pool SqlBackend) -> IO (Bool, Int64)
+beforeTest2 pool = do
   c <- getCurrentTime
   testJob <- dummyJob ("1_ ASDFSDF")
   jobKeyEither <-  try(createJob pool testJob) :: IO (Either SomeException Int64)
@@ -88,8 +88,8 @@ spec2 :: SpecWith (Bool, Int64)
 spec2 = describe "After creating the job but not fetching" $ do
   it "There should be a job in Postgres" $ \(inDb, _) -> inDb `shouldBe` True
 
-beforeHook3 :: (Pool SqlBackend) -> IO (Bool, Bool, Int64)
-beforeHook3 pool  = do
+beforeTest3 :: (Pool SqlBackend) -> IO (Bool, Bool, Int64)
+beforeTest3 pool  = do
   testJob <- dummyJob ("2_ ASDFSDF")
   jobKeyEither <-  try(createJob pool testJob) :: IO (Either SomeException Int64)
   case jobKeyEither of

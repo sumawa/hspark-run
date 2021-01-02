@@ -22,7 +22,7 @@ runNoLoggingActionWPoolTest connectionString action = runNoLoggingT $ withPostgr
 --setupTests :: IO (ConnectionString)
 setupTests = do
   dbConn <- localConnStringIO "test"
-  pool <- runActionWithPoolTest1 dbConn 10
+  pool <- runActionWithPoolTest1 dbConn (10)
   print pool
 --  runSqlPersistMPool dbConn 10 (runMigration migrateAll)
   runActionWithPoolTest dbConn 10 (runMigration migrateAll)
