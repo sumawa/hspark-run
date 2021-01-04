@@ -69,6 +69,7 @@ executable hspark-run-exe
   build-depends:
       base >=4.7 && <5
     , hspark-run
+    , transformers
   default-language: Haskell2010
 
 test-suite hspark-run-test

@@ -8,6 +8,8 @@
 
 module HSparkRunModule (
   runJobs
+  , Environment(..)
+  , runJobsReader
   , readStandaloneConfFromFileT
   ) where
 
@@ -40,6 +42,7 @@ import qualified Data.ByteString.Lazy.Char8 as LBC
 import Data.Maybe
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
+import Control.Monad.Trans.Reader
 import Data.List
 import Control.Exception
 import Control.Monad.IO.Class (MonadIO,liftIO)
@@ -108,3 +111,14 @@ execJob env defaultStandaloneParams job = do
   let (uuid,sp) = getUuidAndUpdatedStandaloneParam job defaultStandaloneParams
   subId <- submitJobEx env uuid sp
   print ("GOT subId" ++ (show subId))
+
+runJobsReader :: ReaderT Environment IO ()
+runJobsReader = undefined
+
+runJobsReader1 env = do
+  connectionString <- localConnStringIO env
+  pool <- retrievePool connectionString 20
+  jobs <- runExceptT (allQueuedEx pool)
+  processJobsT env jobs
+
+data Environment = Environment { jobs :: [Job], param :: StandaloneParam } deriving (Show)

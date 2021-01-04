@@ -14,6 +14,8 @@ module StandaloneRun (
   , generateStandaloneParam
   , post_StandaloneSubmitE
   , get_StandaloneSubmitExcept
+  , readConf
+  , evalConf
   ) where
 
 import Control.Lens ((&), (^.), (^?), (.~))
@@ -33,6 +35,7 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Typeable
 import Control.Monad
 import Control.Monad.Trans.Except
+import Control.Monad.IO.Class
 
 import Network.Wreq as W
 import SqlDb (SpResponse,SparkCommand(..), updateSparkAppId)
@@ -168,3 +171,17 @@ get_StandaloneSubmitExcept = ExceptT $ do
         spResponse = case (join ( fmap (\x -> decode x :: Maybe SpResponse) resp )) of
           Just sp -> Right $ sp
           Nothing -> Left $ "Some Other problem"
+
+readConf :: MaybeT IO StandaloneConf
+readConf = MaybeT $ do
+    input <- B.readFile "standaloneConf.json"
+    let mm = decode input :: Maybe Wrapper
+    return (fmap (standaloneConf) mm)
+
+evalConf :: Maybe StandaloneConf -> IO (StandaloneParam)
+evalConf (Just conf) = do
+  liftIO $ putStrLn ("Loaded StandaloneConf Successfully from the file standaloneConf.json")
+  return (standaloneParam conf)
+evalConf Nothing = do
+  liftIO $ putStrLn ("FAILURE LOADING Conf from the file standaloneConf.json  ")
+  return hardcodedConf
