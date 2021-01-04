@@ -119,11 +119,8 @@ runJobsReader = do
   let js = jobs environment
   let sparam = param environment
   let n = length js
-  let c = mapConcurrently (execJob e sparam) js
-  return $ print (show n ++ " jobs processed")
-  return ()
---  mapConcurrently (execJob e sparam) js
---  print (show n ++ " jobs processed")
+  liftIO $ mapConcurrently (execJob e sparam) js
+  liftIO $ print (show n ++ " jobs processed")
 
 
 runJobsReader1 env = do
