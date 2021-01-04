@@ -41,9 +41,6 @@ import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Time
 import Control.Exception
 
-hardCodedTestConnString :: ConnectionString
-hardCodedTestConnString = "host=127.0.0.1 port=5432 user=sauser dbname=hspark_test"
-
 main :: IO ()
 main = do
   (pool) <- setupTests
@@ -96,7 +93,7 @@ beforeTest3 pool  = do
     Left _ -> error "DB call failed on spec 3!"
     Right jobKey -> do
       inDb <- isJust <$> fetchJob pool jobKey
-      _ <- runJobs "test"
+      _ <- runJobs pool "test"
       status <- fetchJobStatus pool jobKey
       let isSubmitted = fmap (\x -> x == "Submitted")  status
       let isSub = fromMaybe False isSubmitted

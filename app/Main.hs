@@ -3,7 +3,7 @@ module Main where
 --import Lib
 import StandaloneRun (StandaloneParam,readConf,evalConf)
 import Schema (Job)
-import HSparkRunModule (Environment(..),runJobsReader,readStandaloneConfFromFileT)
+import HSparkRunModule (RunData(..),runJobsReader)
 import SqlDb (localConnStringIO, retrievePool,allQueuedEx)
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
@@ -16,9 +16,8 @@ main = do
   queuedJobs <- runExceptT (allQueuedEx pool)
   maybeConf <- runMaybeT readConf
   param <- evalConf maybeConf
-  let environment = Environment{env = "dev", jobs = processJobs queuedJobs, param = param}
+  let environment = RunData{env = "dev", jobs = processJobs queuedJobs, param = param}
   print $ length (jobs environment)
---  print environment
   op <- runReaderT runJobsReader environment
   return ()
 

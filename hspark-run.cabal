@@ -95,4 +95,5 @@ test-suite hspark-run-test
     , time
     , resource-pool
     , conduit
+    , transformers
   default-language: Haskell2010

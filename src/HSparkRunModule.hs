@@ -7,10 +7,11 @@
 -}
 
 module HSparkRunModule (
-  runJobs
-  , Environment(..)
+--  runJobs
+  RunData(..)
+  , runJobs
   , runJobsReader
-  , readStandaloneConfFromFileT
+--  , readStandaloneConfFromFileT
   ) where
 
 import Control.Lens ((&), (^.), (^?), (.~))
@@ -29,8 +30,6 @@ import qualified Data.ByteString.Lazy.Char8 as C
 
 import Data.Typeable
 import Control.Monad
-
-import Data.Aeson
 
 import SqlDb (SpResponse(..), allQueuedEx, localConnStringIO, SparkCommand, updateSparkAppId, retrievePool)
 import StandaloneRun (StandaloneConf(..), Wrapper(..), StandaloneParam, hardcodedConf, generateStandaloneParam, post_StandaloneSubmitE)
@@ -53,17 +52,17 @@ import Control.Concurrent.Async
 import Data.Time
 
 -- FIXME replace env String with Types (DEV | TEST | PROD etc)
-runJobs :: String -> IO ()
-runJobs env = do
-  connectionString <- localConnStringIO env
-  pool <- retrievePool connectionString 20
+-- deprecated
+--runJobs :: String -> IO ()
+runJobs pool env = do
+--  connectionString <- localConnStringIO env
+--  pool <- retrievePool connectionString 20
   jobs <- runExceptT (allQueuedEx pool)
   processJobsT env jobs
 
 -- Alias for uuid String ?
 submitJobEx :: String -> String -> StandaloneParam -> IO ()
 submitJobEx env uuid sp = do
---  print sp
   spResp <- runExceptT (post_StandaloneSubmitE sp)
   processSpResponse env uuid spResp
 
@@ -74,6 +73,7 @@ processSpResponse env uuid (Right spResp) = do
   updateSparkAppId pool uuid (submissionId spResp)
 processSpResponse env uuid (Left e) = putStrLn ("PROCESS SUBMIT failed with error: " ++ (show e))
 
+-- deprecated
 readStandaloneConfFromFileT :: MaybeT IO StandaloneConf
 readStandaloneConfFromFileT = MaybeT $ do
     input <- C.readFile "standaloneConf.json"
@@ -88,6 +88,7 @@ processConf Nothing = do
   liftIO $ putStrLn ("FAILURE LOADING Conf from the file standaloneConf.json  ")
   return hardcodedConf
 
+-- deprecated
 processJobsT :: String -> Either String [Job] -> IO ()
 processJobsT env (Right jobs) = do
   maybeStandaloneConf <- runMaybeT readStandaloneConfFromFileT
@@ -112,21 +113,18 @@ execJob env defaultStandaloneParams job = do
   subId <- submitJobEx env uuid sp
   print ("GOT subId" ++ (show subId))
 
-runJobsReader :: ReaderT Environment IO ()
+runJobsReader :: ReaderT RunData IO ()
 runJobsReader = do
   environment <- ask
-  let e = env environment
-  let js = jobs environment
-  let sparam = param environment
+  let (e,js,sparam) = (env environment, jobs environment, param environment)
   let n = length js
   liftIO $ mapConcurrently (execJob e sparam) js
   liftIO $ print (show n ++ " jobs processed")
 
+--runJobsReader1 env = do
+--  connectionString <- localConnStringIO env
+--  pool <- retrievePool connectionString 20
+--  jobs <- runExceptT (allQueuedEx pool)
+--  processJobsT env jobs
 
-runJobsReader1 env = do
-  connectionString <- localConnStringIO env
-  pool <- retrievePool connectionString 20
-  jobs <- runExceptT (allQueuedEx pool)
-  processJobsT env jobs
-
-data Environment = Environment { env :: String, jobs :: [Job], param :: StandaloneParam } deriving (Show)
+data RunData = RunData { env :: String, jobs :: [Job], param :: StandaloneParam } deriving (Show)

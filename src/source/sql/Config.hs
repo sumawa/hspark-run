@@ -16,7 +16,7 @@ import Control.Monad.Logger (MonadLogger, runStdoutLoggingT, runNoLoggingT, Logg
 import Data.Maybe (fromMaybe)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Control (MonadBaseControl)
-import SqlDb (localConnString)
+--import SqlDb (localConnString)
 
 import Database.Persist.Postgresql (openSimpleConn)
 data Config =
