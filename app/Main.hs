@@ -15,14 +15,16 @@ main = do
   connectionString <- localConnStringIO "dev"
   pool <- retrievePool connectionString 20
   queuedJobs <- runExceptT (allQueuedEx pool)
+  print queuedJobs
   maybeStandaloneConf <- runMaybeT readConf
   param <- evalConf maybeStandaloneConf
-  let env = Environment{jobs = processJobs queuedJobs, param = param}
-  op <- runReaderT runJobsReader env
+  let environment = Environment{env = "dev", jobs = processJobs queuedJobs, param = param}
+--  print environment
+  op <- runReaderT runJobsReader environment
   return ()
 
 processJobs :: Either String [Job] -> [Job]
-processJobs (Right js) = js 
+processJobs (Right js) = js
 processJobs (Left e) = []
 
 

@@ -113,7 +113,18 @@ execJob env defaultStandaloneParams job = do
   print ("GOT subId" ++ (show subId))
 
 runJobsReader :: ReaderT Environment IO ()
-runJobsReader = undefined
+runJobsReader = do
+  environment <- ask
+  let e = env environment
+  let js = jobs environment
+  let sparam = param environment
+  let n = length js
+  let c = mapConcurrently (execJob e sparam) js
+  return $ print (show n ++ " jobs processed")
+  return ()
+--  mapConcurrently (execJob e sparam) js
+--  print (show n ++ " jobs processed")
+
 
 runJobsReader1 env = do
   connectionString <- localConnStringIO env
@@ -121,4 +132,4 @@ runJobsReader1 env = do
   jobs <- runExceptT (allQueuedEx pool)
   processJobsT env jobs
 
-data Environment = Environment { jobs :: [Job], param :: StandaloneParam } deriving (Show)
+data Environment = Environment { env :: String, jobs :: [Job], param :: StandaloneParam } deriving (Show)
