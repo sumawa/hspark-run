@@ -7,12 +7,9 @@ import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Reader
 import HSparkRunModule (RunData(..),runJobsReader)
-import HSource
+import JobSource
 
-processJobs :: Either String [Job] -> [Job]
-processJobs (Right js) = js
-processJobs (Left e) = []
-
+-- FIXME: pick command line env with default values
 main :: IO ()
 main = do
   maybeConf <- runMaybeT readConf
@@ -24,6 +21,11 @@ main = do
 
 getP :: String -> IO SqlParam
 getP env = getParam env
+
+processJobs :: Either String [Job] -> [Job]
+processJobs (Right js) = js
+processJobs (Left e) = []
+
 
 
 

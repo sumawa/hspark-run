@@ -27,7 +27,7 @@ source-repository head
 
 library
   exposed-modules:
-      Schema, SqlDb, StandaloneRun, HSparkRunModule, TestSqlDb,HSource
+      Schema, SqlDb, StandaloneRun, HSparkRunModule, TestSqlDb,JobSource
 --      Schema, SqlDb, Test, TestLayer, TestLib, Config
   other-modules:
       Paths_hspark_run

@@ -48,10 +48,11 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import Data.Time
 
-import HSource
--- FIXME replace env String with Types (DEV | TEST | PROD etc)
+import JobSource
 
--- Alias for uuid String ?
+-- TODO: Replace clunky param passing with ReaderT
+-- FIXME replace env String with Types (DEV | TEST | PROD etc)
+-- TODO: Alias for uuid String ?
 submitJobEx :: String -> StandaloneParam -> SqlParam -> IO ()
 submitJobEx uuid sparam sqlParam = do
   spResp <- runExceptT (post_StandaloneSubmitE sparam)

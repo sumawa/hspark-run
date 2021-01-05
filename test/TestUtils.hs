@@ -11,7 +11,7 @@ import Schema (migrateAll,Job)
 import HSparkRunModule (runJobsReader,RunData(..))
 import StandaloneRun (readConf,evalConf)
 import Control.Monad.Trans.Maybe
-import HSource
+import JobSource
 
 runActionWithPoolTest connectionString poolSize action = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool ->
   liftIO $ do

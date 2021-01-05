@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
-module HSource where
+module JobSource where
 
 import Data.Aeson (FromJSON,ToJSON)
 import Data.Aeson.Types
@@ -26,7 +26,7 @@ import Control.Monad.Except
 import Control.Monad (join)
 import Control.Exception
 
-class HSource v where
+class JobSource v where
   fetchJob :: v -> Int64 -> IO (Maybe Job)
   createJob :: v  -> Job -> IO Int64
   migrateDb :: v  -> IO ()
@@ -36,7 +36,7 @@ class HSource v where
   getParam ::  String -> IO v
   allQueued :: v -> ExceptT String IO [Job]
 
-instance HSource (SqlParam) where
+instance JobSource (SqlParam) where
   fetchJob :: SqlParam -> Int64 -> IO (Maybe Job)
   fetchJob (SqlParam pool) jid = runSqlPersistMPool (get (toSqlKey jid)) pool
 

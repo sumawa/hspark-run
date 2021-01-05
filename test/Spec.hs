@@ -42,7 +42,7 @@ import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Time
 import Control.Exception
 
-import HSource
+import JobSource
 
 main :: IO ()
 main = do
