@@ -92,9 +92,6 @@ runJobsReader = do
     mapConcurrently (execJob sparam sqlParam) js
     print (show n ++  " jobs processed")
 
-getP :: String -> IO SqlParam
-getP env = getParam env
-
 data RunData = RunData { env :: String, param :: StandaloneParam, sourceParam :: SqlParam} deriving (Show)
 
 processJobs :: Either String [Job] -> IO [Job]

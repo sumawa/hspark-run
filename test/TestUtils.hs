@@ -20,13 +20,10 @@ runActionWithPoolTest connectionString poolSize action = runStdoutLoggingT $ wit
 setupTests = do
   maybeConf <- runMaybeT readConf
   param <- evalConf maybeConf
-  sqlParam <- getP "test"
+  sqlParam <- getParam "test"
   let runData = RunData{env = "test", param = param, sourceParam = sqlParam}
   migrateDb sqlParam
   return runData
-
-getP :: String -> IO SqlParam
-getP env = getParam env
 
 --setupTests :: IO (ConnectionString)
 --setupTests = do

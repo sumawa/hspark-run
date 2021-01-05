@@ -14,13 +14,10 @@ main :: IO ()
 main = do
   maybeConf <- runMaybeT readConf
   param <- evalConf maybeConf
-  sqlParam <- getP "dev"
+  sqlParam <- getParam "dev"
   let runData = RunData{env = "dev", param = param, sourceParam = sqlParam}
   op <- runReaderT runJobsReader runData
   return ()
-
-getP :: String -> IO SqlParam
-getP env = getParam env
 
 processJobs :: Either String [Job] -> [Job]
 processJobs (Right js) = js
