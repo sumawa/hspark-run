@@ -16,12 +16,6 @@ import HSource
 runActionWithPoolTest connectionString poolSize action = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool ->
   liftIO $ do
     runSqlPersistMPool action pool
---
---runActionWithPoolTest1 connectionString poolSize = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool -> do return pool
---
---runNoLoggingActionWPoolTest connectionString action = runNoLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
---  liftIO $ do
---    runSqlPersistMPool action pool
 
 setupTests = do
   maybeConf <- runMaybeT readConf

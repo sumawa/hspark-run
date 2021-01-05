@@ -25,18 +25,6 @@ import qualified Data.ByteString.Char8 as C
 import Control.Monad.Except
 import Control.Monad (join)
 import Control.Exception
---class (Default v, Ord v) => Vector v where
---  distance :: v -> v -> Double
---  centroid :: [v] -> v
---
---instance Vector (Double,Double) where
---  distance (a,b) (c,d) = sqrt $ (c-a)*(c-a) + (d-b)*(d-b)
---  centroid lst = let
---                  (u,v) = foldr (\(a,b) (c,d) -> (a+c,b+d)) (0.0,0.0) lst
---                  n = fromIntegral $ length lst
---                 in (u/n, v/n)
-
---data SqlParam = SqlParam (Pool SqlBackend) deriving (Show,Generic)
 
 class HSource v where
   fetchJob :: v -> Int64 -> IO (Maybe Job)
