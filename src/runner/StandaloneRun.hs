@@ -38,7 +38,7 @@ import Control.Monad.Trans.Except
 import Control.Monad.IO.Class
 
 import Network.Wreq as W
-import SqlDb (SpResponse,SparkCommand(..), updateSparkAppId)
+import SqlDb (SpResponse,SparkCommand(..))
 import Schema (Job)
 import Schema
 import Data.Maybe

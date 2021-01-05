@@ -14,20 +14,16 @@
 {-# LANGUAGE DeriveGeneric, ScopedTypeVariables #-}
 
 module SqlDb (
-  createJob
-  , deleteJob
-  , hardCodedConnString
-  , localConnStringIO
-  , retrievePool
+  hardCodedConnString
   , migrateDb
-  , fetchJob
   , SpResponse(..)
   , SparkCommand(..)
-  , updateSparkAppId
   , allQueuedEx
+  , jobsAllQueuedEx
   , readDbConfFromFileT
   , processDbConf
-  , fetchJobStatus
+  , SqlParam(..)
+  , getSqlParam
 ) where
 
 import Data.Int (Int64)
@@ -80,6 +76,8 @@ data SparkCommand = SparkCommand { sparkClass :: String
 instance FromJSON SparkCommand
 instance ToJSON SparkCommand
 
+--data SqlParam = EmptySqlParam | SqlParam (Pool SqlBackend) deriving (Show,Generic)
+data SqlParam = SqlParam { pool :: Pool SqlBackend } deriving (Show,Generic)
 
 logFilter :: a -> LogLevel -> Bool
 logFilter _ LevelError = True
@@ -97,11 +95,11 @@ localConnStringIO env = do
   processDbConf dbConf
 
 retrievePool connectionString poolSize = runStdoutLoggingT $ withPostgresqlPool connectionString poolSize $ \pool ->
-  do return pool
+  do return (SqlParam pool)
 
---runNoLoggingAction :: ConnectionString -> SqlPersistT (NoLoggingT IO) a ->  IO a
---runNoLoggingAction connectionString action = runNoLoggingT $ withPostgresqlConn connectionString $ \backend ->
---  runReaderT action backend
+getSqlParam env poolSize = do
+  connectionString <- localConnStringIO env
+  retrievePool connectionString poolSize
 
 runNoLoggingActionWPool connectionString action = runNoLoggingT $ withPostgresqlPool connectionString 10 $ \pool ->
   liftIO $ do
@@ -109,40 +107,6 @@ runNoLoggingActionWPool connectionString action = runNoLoggingT $ withPostgresql
 
 migrateDb :: (Pool SqlBackend)  -> IO ()
 migrateDb pool = runSqlPersistMPool (runMigration migrateAll) pool
-
-initSqlDbMain :: String -> IO ()
-initSqlDbMain env = do
-  connectionString <- localConnStringIO env
-  pool <- retrievePool connectionString 20
-  migrateDb pool
-
-createJob :: (Pool SqlBackend)  -> Job -> IO Int64
-createJob pool job = fromSqlKey <$> runSqlPersistMPool (insert job) pool
-
-deleteJob :: (Pool SqlBackend)  -> Int64 -> IO ()
-deleteJob pool uuid = runSqlPersistMPool (delete jobKey) pool where
-  jobKey :: Key Job
-  jobKey = toSqlKey uuid
-
---fetchJob :: ConnectionString -> Int64 -> IO (Maybe Job)
---fetchJob connString jid = runActionWithPool connString (get (toSqlKey jid))
-
-fetchJob :: (Pool SqlBackend) -> Int64 -> IO (Maybe Job)
-fetchJob pool jid = runSqlPersistMPool (get (toSqlKey jid)) pool
-
---runActionWithPoolPool :: (Pool SqlBackend)
---runActionWithPoolPool pool action = liftIO $ do
---    runSqlPersistMPool action pool
-
---runActionWithPool :: SqlBackend backend => ReaderT backend (NoLoggingT (ResourceT IO)) a -> Pool backend -> IO aSource
---runActionWithPool :: ReaderT backend (NoLoggingT (ResourceT IO)) a -> (Pool SqlBackend) -> IO a
---runActionWithPool  action pool = runSqlPersistMPool action pool
-
-fetchJobStatus :: (Pool SqlBackend) -> Int64 -> IO (Maybe String)
-fetchJobStatus pool jid = do
-  job <- fetchJob pool jid
-  let status = fmap (jobStatus) job
-  return (join status)
 
 jobsAllQueuedEx = do
   jobEntityList <- selectList [JobStatus ==. Just "Queued"][]
@@ -155,9 +119,6 @@ allQueuedEx pool = ExceptT $  do
   case result of
     Left ex  -> return (Left $ "Caught exception  : " ++ (show ex) )
     Right val -> return (Right val)
-
-updateSparkAppId :: (Pool SqlBackend)  -> String -> String -> IO ()
-updateSparkAppId pool uuid sparkAppId = runSqlPersistMPool (updateWhere [JobUuid ==. uuid][JobSparkJobId =. (Just sparkAppId), JobStatus =. (Just "Submitted")] ) pool
 
 data DbConf = DbConf{
   host :: String

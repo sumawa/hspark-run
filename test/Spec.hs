@@ -14,6 +14,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.Reader
 import Control.Monad.Logger (NoLoggingT(..))
 import Data.Aeson (ToJSON, encode)
 import Data.ByteString (ByteString)
@@ -26,7 +27,7 @@ import Control.Monad.Logger (MonadLogger, runStdoutLoggingT, runNoLoggingT, Logg
 import qualified Data.Text as T
 import Schema (Job(..))
 import Schema
-import SqlDb (migrateDb, createJob, fetchJob, deleteJob, fetchJobStatus)
+--import SqlDb (migrateDb,SqlParam)
 import Data.Pool (Pool)
 
 import TestUtils (setupTests)
@@ -35,66 +36,71 @@ import Data.Either (isLeft, isRight)
 import Data.Int (Int64)
 import Data.Maybe (isJust,fromMaybe)
 
-import SqlDb (SparkCommand(..),SpResponse(..))
-import HSparkRunModule (runJobs)
+import SqlDb (SparkCommand(..),SpResponse(..),SqlParam(..))
+import HSparkRunModule (RunData(..),runJobsReader)
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Time
 import Control.Exception
 
+import HSource
+
 main :: IO ()
 main = do
-  (pool) <- setupTests
-  print pool
+  runData <- setupTests
+  let sqlParam = sourceParam runData
+  let testPool = pool sqlParam
+  print sqlParam
 
-  hspec $ before (beforeTest1 pool) spec1
-  hspec $ before (beforeTest2 pool) $ after (afterTest pool) $ spec2
-  hspec $ before (beforeTest3 pool) $ after (afterTest3 pool) $ spec3
+  hspec $ before (beforeTest1 sqlParam) spec1
+  hspec $ before (beforeTest2 sqlParam) $ after (afterTest sqlParam) $ spec2
+  hspec $ before (beforeTest3 runData) $ after (afterTest3 sqlParam) $ spec3
   return ()
 
-beforeTest1 :: (Pool SqlBackend) -> IO (Bool)
-beforeTest1 pool = do
-  inDb <- isJust <$> fetchJob pool 1
+beforeTest1 :: SqlParam -> IO (Bool)
+beforeTest1 sqlParam = do
+  inDb <- isJust <$> fetchJob sqlParam 1
   return (inDb)
 
 spec1 :: SpecWith (Bool)
 spec1 = describe "After fetching on an empty database" $ do
   it "There should be no job in Postgres" $ \(inDb) -> inDb `shouldBe` False
 
-afterTest :: (Pool SqlBackend) -> (Bool, Int64) -> IO ()
-afterTest pool (_, key) = do
-  deleteJob pool key
+afterTest :: SqlParam -> (Bool, Int64) -> IO ()
+afterTest sqlParam (_, key) = do
+  deleteJob sqlParam key
   return ()
 
-afterTest3 :: (Pool SqlBackend) -> (Bool, Bool,Int64) -> IO ()
-afterTest3 pool (_, _, key) = do
-  deleteJob pool key
+afterTest3 :: SqlParam -> (Bool, Bool,Int64) -> IO ()
+afterTest3 sqlParam (_, _, key) = do
+  deleteJob sqlParam key
   return ()
 
-beforeTest2 :: (Pool SqlBackend) -> IO (Bool, Int64)
-beforeTest2 pool = do
+beforeTest2 :: SqlParam -> IO (Bool, Int64)
+beforeTest2 sqlParam = do
   c <- getCurrentTime
   testJob <- dummyJob ("1_ ASDFSDF")
-  jobKeyEither <-  try(createJob pool testJob) :: IO (Either SomeException Int64)
+  jobKeyEither <-  try(createJob sqlParam testJob) :: IO (Either SomeException Int64)
   case jobKeyEither of
     Left _ -> error "DB call failed on spec 2!"
     Right jobKey -> do
-      inDb <- isJust <$> fetchJob pool jobKey
+      inDb <- isJust <$> fetchJob sqlParam jobKey
       return (inDb, jobKey)
 
 spec2 :: SpecWith (Bool, Int64)
 spec2 = describe "After creating the job but not fetching" $ do
   it "There should be a job in Postgres" $ \(inDb, _) -> inDb `shouldBe` True
 
-beforeTest3 :: (Pool SqlBackend) -> IO (Bool, Bool, Int64)
-beforeTest3 pool  = do
+beforeTest3 :: RunData -> IO (Bool, Bool, Int64)
+beforeTest3 runData  = do
   testJob <- dummyJob ("2_ ASDFSDF")
-  jobKeyEither <-  try(createJob pool testJob) :: IO (Either SomeException Int64)
+  let sqlParam = sourceParam runData
+  jobKeyEither <-  try(createJob sqlParam testJob) :: IO (Either SomeException Int64)
   case jobKeyEither of
     Left _ -> error "DB call failed on spec 3!"
     Right jobKey -> do
-      inDb <- isJust <$> fetchJob pool jobKey
-      _ <- runJobs pool "test"
-      status <- fetchJobStatus pool jobKey
+      inDb <- isJust <$> fetchJob sqlParam jobKey
+      op <- runReaderT runJobsReader runData
+      status <- fetchJobStatus sqlParam jobKey
       let isSubmitted = fmap (\x -> x == "Submitted")  status
       let isSub = fromMaybe False isSubmitted
       return (inDb, isSub, jobKey)
