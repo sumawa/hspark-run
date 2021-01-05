@@ -98,6 +98,7 @@ retrievePool connectionString poolSize = runStdoutLoggingT $ withPostgresqlPool 
   do return (SqlParam pool)
 
 getSqlParam env poolSize = do
+  liftIO $ print ("LOADING DATA FROM " ++ env ++ " ENVIRONMENT")
   connectionString <- localConnStringIO env
   retrievePool connectionString poolSize
 
@@ -141,10 +142,10 @@ readDbConfFromFileT env = MaybeT $ do
 
 processDbConf :: Maybe DbConf -> IO (ConnectionString)
 processDbConf (Just conf) = do
-  liftIO $ C.putStrLn ("Loaded StandaloneConf Successfully from the file dbConf.json")
+  liftIO $ print ("Loaded StandaloneConf Successfully from the file dbConf_<?>.json")
   let str = "host=" ++ (host conf) ++ " port=" ++ (show (port conf)) ++ " user=" ++ (user conf) ++ " dbname=" ++ (name conf)
   return (C.pack str)
 processConf Nothing = do
-  liftIO $ C.putStrLn ("FAILURE LOADING Conf from the file dbConf.json  ")
+  liftIO $ print ("FAILURE LOADING Conf from the file dbConf.json  ")
   return hardCodedConnString
 
