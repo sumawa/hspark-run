@@ -23,7 +23,3 @@ main = do
   let runData = RunData{env = "dev", param = param, sourceParam = sqlParam}
   op <- runReaderT runJobsReader runData
   return ()
-
-processJobs :: Either String [Job] -> [Job]
-processJobs (Right js) = js
-processJobs (Left e) = []
