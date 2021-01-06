@@ -3,7 +3,7 @@
 module SparkRun where
 
 import Control.Monad.Trans.Except
-import Control.Monad 
+import Control.Monad
 import Data.Aeson
 import Data.Text
 import GHC.Generics
@@ -39,12 +39,32 @@ data SparkCommand = SparkCommand { sparkClass :: String
 
 instance FromJSON SparkCommand
 instance ToJSON SparkCommand
-
+{-
+  Algebra for interacting with various Spark Cluster manager
+-}
 class SparkRun v where
   postApplication :: v -> ExceptT String IO SpResponse
   getApplication :: v -> ExceptT String IO SpResponse
   generateParam :: v -> SparkCommand ->  v
 
+{-
+  Instance for interacting with Standalone Cluster Manager
+
+  ExceptT usage
+    https://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html#g:4
+
+    Usage reasons
+    https://stackoverflow.com/questions/53453944/what-purpose-does-the-complexity-of-except-serve-in-haskell
+  ANTI PATTERNS:
+    https://www.fpcomplete.com/haskell/tutorial/exceptions/
+    https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell/
+
+  https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions
+  https://www.schoolofhaskell.com/school/starting-with-haskell/basics-of-haskell/10_Error_Handling
+  https://www.stackbuilders.com/news/errors-and-exceptions-in-haskell
+  https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
+-}
+-- FIXME: read host port from standaloneConf.json
 instance SparkRun (StandaloneParam) where
   postApplication :: StandaloneParam -> ExceptT String IO SpResponse
   postApplication sp = ExceptT $ do
@@ -58,6 +78,20 @@ instance SparkRun (StandaloneParam) where
             Just sp -> Right $ sp
             Nothing -> Left $ "Standalone Submit Failed for unknown reasons: "
 
+  {-
+    Api call for tracking jobs
+    http://127.0.0.1:6066/v1/submissions/status/asdfsdfsdf
+    {
+    "action" : "SubmissionStatusResponse",
+    "serverSparkVersion" : "2.4.0",
+    "submissionId" : "asdfsdfsdf",
+    "success" : false
+    }
+  -}
+  {-
+    http://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html#g:4
+  -}
+  -- FIXME: read host port from standaloneConf.json
   getApplication :: StandaloneParam -> ExceptT String IO SpResponse
   getApplication spm = ExceptT $ do
     let opts = defaults

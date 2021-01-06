@@ -10,17 +10,13 @@ import HSparkRunModule (RunData(..),runJobsReader)
 import JobSource
 
 import System.Environment   
-import Data.List  
+import Data.List
+import Data.Typeable
 
 -- FIXME: pick command line env with default values
 main :: IO ()
 main = do
-  args <- getArgs                  -- IO [String]
-  progName <- getProgName          -- IO String
-  putStrLn "The arguments are:"  
-  mapM putStrLn args  
-  putStrLn "The program name is:"  
-  putStrLn progName
+--  args <- getArgs                  -- IO [String]
   maybeConf <- runMaybeT readConf
   param <- evalConf maybeConf
   sqlParam <- getParam "dev"
@@ -31,8 +27,3 @@ main = do
 processJobs :: Either String [Job] -> [Job]
 processJobs (Right js) = js
 processJobs (Left e) = []
-
-
-
-
-
