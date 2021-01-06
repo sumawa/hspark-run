@@ -1,5 +1,5 @@
 {-
-  References for Persitent
+  References for Persistent
   https://github.com/yesodweb/persistent/blob/master/docs/Persistent-entity-syntax.md
   https://begriffs.com/posts/2016-06-01-pragmatic-haskell-2.html
   https://www.parsonsmatt.org/2019/12/06/splitting_persistent_models.html
@@ -16,8 +16,8 @@
 module SqlDb (
   hardCodedConnString
   , migrateDb
-  , SpResponse(..)
-  , SparkCommand(..)
+--  , SpResponse(..)
+--  , SparkCommand(..)
   , allQueuedEx
   , jobsAllQueuedEx
   , readDbConfFromFileT
@@ -26,7 +26,7 @@ module SqlDb (
   , getSqlParam
 ) where
 
-import Data.Int (Int64)
+--import Data.Int (Int64)
 
 import Control.Monad.Logger (runStdoutLoggingT, MonadLogger, LoggingT, runNoLoggingT, NoLoggingT, LogLevel(..), filterLogger)
 import Control.Monad.Reader (runReaderT)
@@ -61,20 +61,20 @@ import Data.Text
 import Data.Typeable
 import Control.Exception
 
-data SpResponse = SpResponse { action :: Text
-  , driverState :: Maybe Text, message :: Maybe Text, serverSparkVersion :: Text
-  , submissionId :: String, success :: Bool } deriving (Show,Generic)
-
-instance FromJSON SpResponse
-instance ToJSON SpResponse
-
-data SparkCommand = SparkCommand { sparkClass :: String
-  , applicationJar :: String
-  , argList :: [String]
-} deriving (Show,Generic)
-
-instance FromJSON SparkCommand
-instance ToJSON SparkCommand
+--data SpResponse = SpResponse { action :: Text
+--  , driverState :: Maybe Text, message :: Maybe Text, serverSparkVersion :: Text
+--  , submissionId :: String, success :: Bool } deriving (Show,Generic)
+--
+--instance FromJSON SpResponse
+--instance ToJSON SpResponse
+--
+--data SparkCommand = SparkCommand { sparkClass :: String
+--  , applicationJar :: String
+--  , argList :: [String]
+--} deriving (Show,Generic)
+--
+--instance FromJSON SparkCommand
+--instance ToJSON SparkCommand
 
 --data SqlParam = EmptySqlParam | SqlParam (Pool SqlBackend) deriving (Show,Generic)
 data SqlParam = SqlParam { pool :: Pool SqlBackend } deriving (Show,Generic)

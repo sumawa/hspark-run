@@ -20,7 +20,7 @@ import Database.Persist (PersistEntity)
 import Database.Persist.Postgresql (ConnectionString, withPostgresqlConn, runMigration, SqlPersistT,SqlBackend, withPostgresqlPool, runSqlPersistMPool)
 import Data.Pool (Pool)
 import Data.ByteString.Char8 (pack,unpack)
-import qualified Data.ByteString.Char8 as C
+--import qualified Data.ByteString.Char8 as C
 
 import Control.Monad.Except
 import Control.Monad (join)

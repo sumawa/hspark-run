@@ -36,11 +36,12 @@ import Data.Either (isLeft, isRight)
 import Data.Int (Int64)
 import Data.Maybe (isJust,fromMaybe)
 
-import SqlDb (SparkCommand(..),SpResponse(..),SqlParam(..))
+import SqlDb (SqlParam(..))
 import HSparkRunModule (RunData(..),runJobsReader)
 import Data.ByteString.Lazy.Char8 (unpack)
 import Data.Time
 import Control.Exception
+import SparkRun
 
 import JobSource
 

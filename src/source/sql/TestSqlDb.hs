@@ -5,7 +5,8 @@ module TestSqlDb(
 ) where
 
 import StandaloneRun (evalConf,readConf)
-import SqlDb (SqlParam,SparkCommand(..),SpResponse(..))
+import SqlDb (SqlParam)
+import SparkRun
 import JobSource
 import HSparkRunModule (runJobsReader,RunData(..))
 import Schema

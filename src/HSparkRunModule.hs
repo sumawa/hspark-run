@@ -28,9 +28,11 @@ import qualified Data.ByteString.Lazy.Char8 as C
 import Data.Typeable
 import Control.Monad
 
-import SqlDb (SpResponse(..), SparkCommand, SqlParam(..))
-import StandaloneRun (StandaloneConf(..), Wrapper(..), StandaloneParam, hardcodedConf, generateStandaloneParam, post_StandaloneSubmitE)
+import SqlDb (SqlParam(..))
+import SparkRun
+import StandaloneRun (StandaloneConf(..), Wrapper(..), StandaloneParam, hardcodedConf)
 import Schema
+import SparkRun
 --import Data.Pool
 
 import qualified Data.Text as TT
@@ -55,7 +57,7 @@ import JobSource
 -- TODO: Alias for uuid String ?
 submitJobEx :: String -> StandaloneParam -> SqlParam -> IO ()
 submitJobEx uuid sparam sqlParam = do
-  spResp <- runExceptT (post_StandaloneSubmitE sparam)
+  spResp <- runExceptT (postApplication sparam)
   processSpResponse uuid sqlParam spResp
   return ()
 
@@ -69,7 +71,7 @@ getUuidAndUpdatedStandaloneParam job defaultStandaloneParams = (uuid,sp) where
   uuid = jobUuid job
   command = jobCommand job
   sparkCommand = decode (LBC.pack command) :: Maybe SparkCommand
-  maybeStandaloneParam = (generateStandaloneParam defaultStandaloneParams) <$> sparkCommand
+  maybeStandaloneParam = (generateParam defaultStandaloneParams) <$> sparkCommand
   sp = fromMaybe hardcodedConf maybeStandaloneParam
 
 --execJob :: Job -> ReaderT RunData IO ()
