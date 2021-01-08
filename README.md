@@ -5,7 +5,7 @@
 ##### 2. Exploring IO/Concurrency/Streaming/Persistent and other libraries  
 ##### 3. A utility project (Spark Job Execution and tracking)
 
-Docs [here](docs/index.html) 
+Docs [here](https://htmlpreview.github.io/?https://github.com/sumawa/hspark-run/blob/master/docs/index.html) 
 
 It is a mirror project of Scala / Cats based project doing the same things.
 https://github.com/sumawa/sa-spark-run/
