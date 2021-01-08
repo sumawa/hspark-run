@@ -1,0 +1,90 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-comment">-- | Main entry point for HSparkRun application</span><span>
+</span><span id="line-2"></span><span>
+</span><span id="line-3"></span><span class="hs-comment">{--
+-- | Read args from command line
+-- |   HSPARKRUN_ENV=dev HSPARKRUN_HOME=$(pwd) HSPARKRUN_TYPE=standalone
+-- |
+-- |     HSPARKRUN_TYPE : possible values (yarn/standalone) depending upon cluster manager for spark
+-- |    HSPARKRUN_ENV = dev / test / prod
+-- |    HSPARKRUN_HOME = $(pwd)    # current directory for spark run app
+-- |
+-- |   Workflow:
+-- |    * Read above mentioned arguments from command line and set the mode of execution
+-- |    * load spark run conf ( yarn or standalone configuration properties to reach cluster manager )
+-- |    * initialize source param (sql/file/... others)
+-- |    * Prepare RunData module
+-- |    * Run the module HSparkRunModule via the reader
+--}</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">Main</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-19"></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="StandaloneRun.html"><span class="hs-identifier">StandaloneRun</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier">StandaloneParam</span></a></span><span class="hs-special">,</span><span class="annot"><a href="StandaloneRun.html#readConf"><span class="hs-identifier">readConf</span></a></span><span class="hs-special">,</span><span class="annot"><a href="StandaloneRun.html#evalConf"><span class="hs-identifier">evalConf</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Schema</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Job</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">SqlDb</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">SqlParam</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Maybe</span></span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except</span></span><span>
+</span><span id="line-25"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Reader</span></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="HSparkRunModule.html"><span class="hs-identifier">HSparkRunModule</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="HSparkRunModule.html#RunData"><span class="hs-identifier">RunData</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span class="annot"><a href="HSparkRunModule.html#runJobsReader"><span class="hs-identifier">runJobsReader</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="JobSource.html"><span class="hs-identifier">JobSource</span></a></span><span>
+</span><span id="line-28"></span><span>
+</span><span id="line-29"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">System.Environment</span></span><span>   </span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.List</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span>
+</span><span id="line-32"></span><span>
+</span><span id="line-33"></span><span class="hs-comment">{-|
+ Read args from command line
+
+     HSPARKRUN_TYPE : possible values (yarn/standalone) depending upon cluster manager for spark
+
+     HSPARKRUN_ENV = dev / test / prod
+
+     HSPARKRUN_HOME = $(pwd)    # current directory for spark run app
+
+   Workflow:
+   
+    * Read above mentioned arguments from command line and set the mode of execution
+    
+    * load spark run conf ( yarn or standalone configuration properties to reach cluster manager )
+    
+    * initialize source param (sql/file/... others)
+    
+    * Prepare RunData module
+    
+    * Run the module HSparkRunModule via the reader
+-}</span><span>
+</span><span id="line-54"></span><span>
+</span><span id="line-55"></span><span class="hs-comment">-- FIXME: pick command line env with default values</span><span>
+</span><span id="line-56"></span><span class="annot"><a href="Main.html#main"><span class="hs-identifier hs-type">main</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-57"></span><span id="main"><span class="annot"><span class="annottext">main :: IO ()
+</span><a href="Main.html#main"><span class="hs-identifier hs-var hs-var">main</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-58"></span><span class="hs-comment">--  args &lt;- getArgs                  -- IO [String]</span><span>
+</span><span id="line-59"></span><span>  </span><span id="local-6989586621679213844"><span class="annot"><span class="annottext">Maybe StandaloneConf
+</span><a href="#local-6989586621679213844"><span class="hs-identifier hs-var">maybeConf</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">MaybeT IO StandaloneConf -&gt; IO (Maybe StandaloneConf)
+forall (m :: * -&gt; *) a. MaybeT m a -&gt; m (Maybe a)
+</span><span class="hs-identifier hs-var hs-var">runMaybeT</span></span><span> </span><span class="annot"><span class="annottext">MaybeT IO StandaloneConf
+</span><a href="StandaloneRun.html#readConf"><span class="hs-identifier hs-var">readConf</span></a></span><span>
+</span><span id="line-60"></span><span>  </span><span id="local-6989586621679213842"><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213842"><span class="hs-identifier hs-var">param</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">Maybe StandaloneConf -&gt; IO StandaloneParam
+</span><a href="StandaloneRun.html#evalConf"><span class="hs-identifier hs-var">evalConf</span></a></span><span> </span><span class="annot"><span class="annottext">Maybe StandaloneConf
+</span><a href="#local-6989586621679213844"><span class="hs-identifier hs-var">maybeConf</span></a></span><span>
+</span><span id="line-61"></span><span>  </span><span id="local-6989586621679213841"><span class="annot"><span class="annottext">SqlParam
+</span><a href="#local-6989586621679213841"><span class="hs-identifier hs-var">sqlParam</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO SqlParam
+forall v. JobSource v =&gt; String -&gt; IO v
+</span><a href="JobSource.html#getParam"><span class="hs-identifier hs-var">getParam</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;dev&quot;</span></span><span>
+</span><span id="line-62"></span><span>  </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679213839"><span class="annot"><span class="annottext">runData :: RunData
+</span><a href="#local-6989586621679213839"><span class="hs-identifier hs-var hs-var">runData</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">RunData :: String -&gt; StandaloneParam -&gt; SqlParam -&gt; RunData
+</span><a href="HSparkRunModule.html#RunData"><span class="hs-identifier hs-type hs-type">RunData</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">env :: String
+</span><a href="HSparkRunModule.html#env"><span class="hs-identifier hs-var">env</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-string">&quot;dev&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">param :: StandaloneParam
+</span><a href="HSparkRunModule.html#param"><span class="hs-identifier hs-var">param</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213842"><span class="hs-identifier hs-var">param</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">sourceParam :: SqlParam
+</span><a href="HSparkRunModule.html#sourceParam"><span class="hs-identifier hs-var">sourceParam</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SqlParam
+</span><a href="#local-6989586621679213841"><span class="hs-identifier hs-var">sqlParam</span></a></span><span class="hs-special">}</span><span>
+</span><span id="line-63"></span><span>  </span><span id="local-6989586621679213833"><span class="annot"><span class="annottext">()
+</span><a href="#local-6989586621679213833"><span class="hs-identifier hs-var">op</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">ReaderT RunData IO () -&gt; RunData -&gt; IO ()
+forall r (m :: * -&gt; *) a. ReaderT r m a -&gt; r -&gt; m a
+</span><span class="hs-identifier hs-var hs-var">runReaderT</span></span><span> </span><span class="annot"><span class="annottext">ReaderT RunData IO ()
+</span><a href="HSparkRunModule.html#runJobsReader"><span class="hs-identifier hs-var">runJobsReader</span></a></span><span> </span><span class="annot"><span class="annottext">RunData
+</span><a href="#local-6989586621679213839"><span class="hs-identifier hs-var">runData</span></a></span><span>
+</span><span id="line-64"></span><span>  </span><span class="annot"><span class="annottext">() -&gt; IO ()
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-65"></span></pre></body></html>

@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
 {-# LANGUAGE InstanceSigs #-}
+-- | Typeclass representing the data source from which Job details are fetched
 module JobSource where
 
 import Data.Aeson (FromJSON,ToJSON)
@@ -27,15 +28,22 @@ import Control.Monad (join)
 import Control.Exception
 
 class JobSource v where
+  -- | fetch Job details from a "source" given Int64 id
   fetchJob :: v -> Int64 -> IO (Maybe Job)
+  -- | create a Job within a "source" given Int64 id
   createJob :: v  -> Job -> IO Int64
+  -- | initialize db if not done
   migrateDb :: v  -> IO ()
+  -- | delete a Job within a "source" given Int64 id
   deleteJob :: v -> Int64 -> IO ()
-  fetchJobStatus :: v -> Int64 -> IO (Maybe String)
+  fetchJobStatus :: v       -- ^context of the "JobSource" for ex: DB Pool in case of postgres via SqlParam
+    -> Int64                -- ^id of the job
+    -> IO (Maybe String)    -- ^return IO wrapped Status (Queued/Running/etc) or Nothing
   updateSparkAppId :: v  -> String -> String -> IO ()
   getParam ::  String -> IO v
   allQueued :: v -> ExceptT String IO [Job]
 
+-- | Instance of JobSource for dealing with sql source (postgres/mariadb/etc.)
 instance JobSource (SqlParam) where
   fetchJob :: SqlParam -> Int64 -> IO (Maybe Job)
   fetchJob (SqlParam pool) jid = runSqlPersistMPool (get (toSqlKey jid)) pool

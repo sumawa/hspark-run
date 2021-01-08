@@ -2,10 +2,12 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-binds #-}
 {-
---https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781783286331/1/ch01lvl1sec13/examining-a-json-file-with-the-aeson-package
---http://www.serpentine.com/wreq/tutorial.html
+  Good references
+  https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781783286331/1/ch01lvl1sec13/examining-a-json-file-with-the-aeson-package
+  http://www.serpentine.com/wreq/tutorial.html
 -}
 
+-- | Module that binds the logic of retrieving jobs from a source and executing them concurrently.
 module HSparkRunModule (
   RunData(..)
   , runJobsReader
@@ -52,6 +54,37 @@ import Data.Time
 
 import JobSource
 
+data RunData = RunData { env :: String        -- ^Test / Dev / Prod environment values = "test" "dev" or "prod"
+  , param :: StandaloneParam                  -- ^Param for interacting with specific cluster manager (Standalone/Yarn .. etc.)
+  , sourceParam :: SqlParam                   -- ^Source details (like Sql DB pool / other source resources)
+  } deriving (Show)
+
+{-|
+ Module that binds the logic of retrieving jobs from a source and executing them concurrently.
+
+ * Both Source Param with resource  (sql db pool / file handles .. others) and spark server param (Stanadlone/Yarn/.. others)
+ are injected using ReaderT
+
+   Workflow:
+
+    * Extract data source and spark param
+
+    * retrieve jobs using source param details
+
+    * concurrently execute jobs through spark param information
+
+-}
+runJobsReader :: ReaderT RunData IO ()
+runJobsReader = do
+  environment <- ask
+  let (e,sparam,sqlParam) = (env environment, param environment, sourceParam environment)
+  liftIO $ do
+    jobs <- runExceptT (allQueued sqlParam)
+    js <- processJobs jobs
+    let n = length js
+    mapConcurrently (execJob sparam sqlParam) js
+    print (show n ++  " jobs processed")
+
 -- TODO: Replace clunky param passing with ReaderT
 -- FIXME replace env String with Types (DEV | TEST | PROD etc)
 -- TODO: Alias for uuid String ?
@@ -82,19 +115,6 @@ execJob sparam sqlParam job = do
   let (uuid,sp) = getUuidAndUpdatedStandaloneParam job sparam
   subId <- submitJobEx uuid sp sqlParam
   liftIO $ print ("GOT subId" ++ (show subId))
-
-runJobsReader :: ReaderT RunData IO ()
-runJobsReader = do
-  environment <- ask
-  let (e,sparam,sqlParam) = (env environment, param environment, sourceParam environment)
-  liftIO $ do
-    jobs <- runExceptT (allQueued sqlParam)
-    js <- processJobs jobs
-    let n = length js
-    mapConcurrently (execJob sparam sqlParam) js
-    print (show n ++  " jobs processed")
-
-data RunData = RunData { env :: String, param :: StandaloneParam, sourceParam :: SqlParam} deriving (Show)
 
 processJobs :: Either String [Job] -> IO [Job]
 processJobs (Right js) = return js

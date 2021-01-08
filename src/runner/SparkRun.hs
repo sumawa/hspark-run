@@ -47,7 +47,7 @@ class SparkRun v where
   getApplication :: v -> ExceptT String IO SpResponse
   generateParam :: v -> SparkCommand ->  v
 
-{-
+{-|
   Instance for interacting with Standalone Cluster Manager
 
   ExceptT usage
@@ -78,7 +78,7 @@ instance SparkRun (StandaloneParam) where
             Just sp -> Right $ sp
             Nothing -> Left $ "Standalone Submit Failed for unknown reasons: "
 
-  {-
+  {-|
     Api call for tracking jobs
     http://127.0.0.1:6066/v1/submissions/status/asdfsdfsdf
     {

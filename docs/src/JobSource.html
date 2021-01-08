@@ -1,0 +1,261 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE InstanceSigs #-}</span><span>
+</span><span id="line-3"></span><span class="hs-comment">-- | Typeclass representing the data source from which Job details are fetched</span><span>
+</span><span id="line-4"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">JobSource</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-5"></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">FromJSON</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">ToJSON</span></span><span class="hs-special">)</span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Types</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Lens</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">key</span></span><span class="hs-special">)</span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-10"></span><span>
+</span><span id="line-11"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">SqlDb</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">allQueuedEx</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">SqlParam</span></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">getSqlParam</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">jobsAllQueuedEx</span></span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Schema</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Job</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Schema</span></span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Int</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Int64</span></span><span class="hs-special">)</span><span>
+</span><span id="line-15"></span><span>
+</span><span id="line-16"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Database.Persist</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">selectList</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(==.)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(&lt;.)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(=.)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">SelectOpt</span></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">Entity</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">entityValues</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">entityVal</span></span><span class="hs-special">)</span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Database.Persist</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">get</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">getEntity</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">getJustEntity</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">insert</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">delete</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">selectList</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">selectFirst</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">update</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">updateWhere</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Database.Persist.Sql</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">fromSqlKey</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">toSqlKey</span></span><span class="hs-special">)</span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Database.Persist</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">PersistEntity</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Database.Persist.Postgresql</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">ConnectionString</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">withPostgresqlConn</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">runMigration</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">SqlPersistT</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">SqlBackend</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">withPostgresqlPool</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-identifier">runSqlPersistMPool</span></span><span class="hs-special">)</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Pool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Pool</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Char8</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">pack</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">unpack</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-comment">--import qualified Data.ByteString.Char8 as C</span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Except</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">join</span></span><span class="hs-special">)</span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">class</span><span> </span><span id="JobSource"><span class="annot"><a href="JobSource.html#JobSource"><span class="hs-identifier hs-var">JobSource</span></a></span></span><span> </span><span id="local-6989586621679213350"><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-31"></span><span>  </span><span class="hs-comment">-- | fetch Job details from a &quot;source&quot; given Int64 id</span><span>
+</span><span id="line-32"></span><span>  </span><span id="fetchJob"><span class="annot"><a href="JobSource.html#fetchJob"><span class="hs-identifier hs-type">fetchJob</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span class="hs-special">)</span><span>
+</span><span id="line-33"></span><span>  </span><span class="hs-comment">-- | create a Job within a &quot;source&quot; given Int64 id</span><span>
+</span><span id="line-34"></span><span>  </span><span id="createJob"><span class="annot"><a href="JobSource.html#createJob"><span class="hs-identifier hs-type">createJob</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span>
+</span><span id="line-35"></span><span>  </span><span class="hs-comment">-- | initialize db if not done</span><span>
+</span><span id="line-36"></span><span>  </span><span id="migrateDb"><span class="annot"><a href="JobSource.html#migrateDb"><span class="hs-identifier hs-type">migrateDb</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-comment">-- | delete a Job within a &quot;source&quot; given Int64 id</span><span>
+</span><span id="line-38"></span><span>  </span><span id="deleteJob"><span class="annot"><a href="JobSource.html#deleteJob"><span class="hs-identifier hs-type">deleteJob</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>  </span><span id="fetchJobStatus"><span class="annot"><a href="JobSource.html#fetchJobStatus"><span class="hs-identifier hs-type">fetchJobStatus</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span>       </span><span class="hs-comment">-- ^context of the &quot;JobSource&quot; for ex: DB Pool in case of postgres via SqlParam</span><span>
+</span><span id="line-40"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span>                </span><span class="hs-comment">-- ^id of the job</span><span>
+</span><span id="line-41"></span><span>    </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>    </span><span class="hs-comment">-- ^return IO wrapped Status (Queued/Running/etc) or Nothing</span><span>
+</span><span id="line-42"></span><span>  </span><span id="updateSparkAppId"><span class="annot"><a href="JobSource.html#updateSparkAppId"><span class="hs-identifier hs-type">updateSparkAppId</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-43"></span><span>  </span><span id="getParam"><span class="annot"><a href="JobSource.html#getParam"><span class="hs-identifier hs-type">getParam</span></a></span></span><span> </span><span class="hs-glyph">::</span><span>  </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span>
+</span><span id="line-44"></span><span>  </span><span id="allQueued"><span class="annot"><a href="JobSource.html#allQueued"><span class="hs-identifier hs-type">allQueued</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213350"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span class="hs-special">]</span><span>
+</span><span id="line-45"></span><span>
+</span><span id="line-46"></span><span class="hs-comment">-- | Instance of JobSource for dealing with sql source (postgres/mariadb/etc.)</span><span>
+</span><span id="line-47"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="JobSource.html#JobSource"><span class="hs-identifier hs-type">JobSource</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-48"></span><span>  </span><span class="annot"><a href="JobSource.html#fetchJob"><span class="hs-identifier hs-type">fetchJob</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span class="hs-special">)</span><span>
+</span><span id="line-49"></span><span>  </span><span id="local-6989586621679213235"><span class="annot"><span class="annottext">fetchJob :: SqlParam -&gt; Int64 -&gt; IO (Maybe Job)
+</span><a href="#local-6989586621679213235"><span class="hs-identifier hs-var hs-var hs-var hs-var">fetchJob</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213233"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213233"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679213232"><span class="annot"><span class="annottext">jid :: Int64
+</span><a href="#local-6989586621679213232"><span class="hs-identifier hs-var">jid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) (Maybe Job)
+-&gt; Pool SqlBackend -&gt; IO (Maybe Job)
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key Job
+-&gt; ReaderT SqlBackend (NoLoggingT (ResourceT IO)) (Maybe Job)
+forall backend (m :: * -&gt; *) record.
+(PersistStoreRead backend, MonadIO m,
+ PersistRecordBackend record backend) =&gt;
+Key record -&gt; ReaderT backend m (Maybe record)
+</span><span class="hs-identifier hs-var">get</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Int64 -&gt; Key Job
+forall record.
+ToBackendKey SqlBackend record =&gt;
+Int64 -&gt; Key record
+</span><span class="hs-identifier hs-var">toSqlKey</span></span><span> </span><span class="annot"><span class="annottext">Int64
+</span><a href="#local-6989586621679213232"><span class="hs-identifier hs-var">jid</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213233"><span class="hs-identifier hs-var">pool</span></a></span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span>  </span><span class="annot"><a href="JobSource.html#migrateDb"><span class="hs-identifier hs-type">migrateDb</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-52"></span><span>  </span><span id="local-6989586621679213231"><span class="annot"><span class="annottext">migrateDb :: SqlParam -&gt; IO ()
+</span><a href="#local-6989586621679213231"><span class="hs-identifier hs-var hs-var hs-var hs-var">migrateDb</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213230"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213230"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+-&gt; Pool SqlBackend -&gt; IO ()
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Migration -&gt; ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+forall (m :: * -&gt; *).
+MonadIO m =&gt;
+Migration -&gt; ReaderT SqlBackend m ()
+</span><span class="hs-identifier hs-var">runMigration</span></span><span> </span><span class="annot"><span class="annottext">Migration
+</span><span class="hs-identifier hs-var">migrateAll</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213230"><span class="hs-identifier hs-var">pool</span></a></span><span>
+</span><span id="line-53"></span><span>
+</span><span id="line-54"></span><span>  </span><span class="annot"><a href="JobSource.html#deleteJob"><span class="hs-identifier hs-type">deleteJob</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-55"></span><span>  </span><span id="local-6989586621679213228"><span class="annot"><span class="annottext">deleteJob :: SqlParam -&gt; Int64 -&gt; IO ()
+</span><a href="#local-6989586621679213228"><span class="hs-identifier hs-var hs-var hs-var hs-var">deleteJob</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213227"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213227"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679213226"><span class="annot"><span class="annottext">uuid :: Int64
+</span><a href="#local-6989586621679213226"><span class="hs-identifier hs-var">uuid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+-&gt; Pool SqlBackend -&gt; IO ()
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Key Job -&gt; ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+forall backend (m :: * -&gt; *) record.
+(PersistStoreWrite backend, MonadIO m,
+ PersistRecordBackend record backend) =&gt;
+Key record -&gt; ReaderT backend m ()
+</span><span class="hs-identifier hs-var">delete</span></span><span> </span><span class="annot"><span class="annottext">Key Job
+</span><a href="#local-6989586621679213225"><span class="hs-identifier hs-var">jobKey</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213227"><span class="hs-identifier hs-var">pool</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-56"></span><span>    </span><span class="annot"><a href="#local-6989586621679213225"><span class="hs-identifier hs-type">jobKey</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Key</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span>
+</span><span id="line-57"></span><span>    </span><span id="local-6989586621679213225"><span class="annot"><span class="annottext">jobKey :: Key Job
+</span><a href="#local-6989586621679213225"><span class="hs-identifier hs-var hs-var">jobKey</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Int64 -&gt; Key Job
+forall record.
+ToBackendKey SqlBackend record =&gt;
+Int64 -&gt; Key record
+</span><span class="hs-identifier hs-var">toSqlKey</span></span><span> </span><span class="annot"><span class="annottext">Int64
+</span><a href="#local-6989586621679213226"><span class="hs-identifier hs-var">uuid</span></a></span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span>  </span><span class="annot"><a href="JobSource.html#fetchJobStatus"><span class="hs-identifier hs-type">fetchJobStatus</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-60"></span><span>  </span><span id="local-6989586621679213224"><span class="annot"><span class="annottext">fetchJobStatus :: SqlParam -&gt; Int64 -&gt; IO (Maybe String)
+</span><a href="#local-6989586621679213224"><span class="hs-identifier hs-var hs-var hs-var hs-var">fetchJobStatus</span></a></span></span><span> </span><span id="local-6989586621679213223"><span class="annot"><span class="annottext">sqlParam :: SqlParam
+</span><a href="#local-6989586621679213223"><span class="hs-identifier hs-var">sqlParam</span></a></span></span><span> </span><span id="local-6989586621679213222"><span class="annot"><span class="annottext">jid :: Int64
+</span><a href="#local-6989586621679213222"><span class="hs-identifier hs-var">jid</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-61"></span><span>    </span><span id="local-6989586621679213221"><span class="annot"><span class="annottext">Maybe Job
+</span><a href="#local-6989586621679213221"><span class="hs-identifier hs-var">job</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">SqlParam -&gt; Int64 -&gt; IO (Maybe Job)
+forall v. JobSource v =&gt; v -&gt; Int64 -&gt; IO (Maybe Job)
+</span><a href="JobSource.html#fetchJob"><span class="hs-identifier hs-var">fetchJob</span></a></span><span> </span><span class="annot"><span class="annottext">SqlParam
+</span><a href="#local-6989586621679213223"><span class="hs-identifier hs-var">sqlParam</span></a></span><span> </span><span class="annot"><span class="annottext">Int64
+</span><a href="#local-6989586621679213222"><span class="hs-identifier hs-var">jid</span></a></span><span>
+</span><span id="line-62"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679213220"><span class="annot"><span class="annottext">status :: Maybe (Maybe String)
+</span><a href="#local-6989586621679213220"><span class="hs-identifier hs-var hs-var">status</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">(Job -&gt; Maybe String) -&gt; Maybe Job -&gt; Maybe (Maybe String)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Job -&gt; Maybe String
+</span><span class="hs-identifier hs-var hs-var">jobStatus</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Job
+</span><a href="#local-6989586621679213221"><span class="hs-identifier hs-var">job</span></a></span><span>
+</span><span id="line-63"></span><span>    </span><span class="annot"><span class="annottext">Maybe String -&gt; IO (Maybe String)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe (Maybe String) -&gt; Maybe String
+forall (m :: * -&gt; *) a. Monad m =&gt; m (m a) -&gt; m a
+</span><span class="hs-identifier hs-var">join</span></span><span> </span><span class="annot"><span class="annottext">Maybe (Maybe String)
+</span><a href="#local-6989586621679213220"><span class="hs-identifier hs-var">status</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-64"></span><span>
+</span><span id="line-65"></span><span>  </span><span class="annot"><a href="JobSource.html#updateSparkAppId"><span class="hs-identifier hs-type">updateSparkAppId</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="hs-special">)</span><span>
+</span><span id="line-66"></span><span>  </span><span id="local-6989586621679213218"><span class="annot"><span class="annottext">updateSparkAppId :: SqlParam -&gt; String -&gt; String -&gt; IO ()
+</span><a href="#local-6989586621679213218"><span class="hs-identifier hs-var hs-var hs-var hs-var">updateSparkAppId</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213217"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213217"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679213216"><span class="annot"><span class="annottext">uuid :: String
+</span><a href="#local-6989586621679213216"><span class="hs-identifier hs-var">uuid</span></a></span></span><span> </span><span id="local-6989586621679213215"><span class="annot"><span class="annottext">sparkAppId :: String
+</span><a href="#local-6989586621679213215"><span class="hs-identifier hs-var">sparkAppId</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+-&gt; Pool SqlBackend -&gt; IO ()
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Filter Job]
+-&gt; [Update Job]
+-&gt; ReaderT SqlBackend (NoLoggingT (ResourceT IO)) ()
+forall backend (m :: * -&gt; *) record.
+(PersistQueryWrite backend, MonadIO m,
+ PersistRecordBackend record backend) =&gt;
+[Filter record] -&gt; [Update record] -&gt; ReaderT backend m ()
+</span><span class="hs-identifier hs-var">updateWhere</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="annottext">EntityField Job String
+forall typ. (typ ~ String) =&gt; EntityField Job typ
+</span><span class="hs-identifier hs-var">JobUuid</span></span><span> </span><span class="annot"><span class="annottext">EntityField Job String -&gt; String -&gt; Filter Job
+forall v typ.
+PersistField typ =&gt;
+EntityField v typ -&gt; typ -&gt; Filter v
+</span><span class="hs-operator hs-var">==.</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679213216"><span class="hs-identifier hs-var">uuid</span></a></span><span class="hs-special">]</span><span class="hs-special">[</span><span class="annot"><span class="annottext">EntityField Job (Maybe String)
+forall typ. (typ ~ Maybe String) =&gt; EntityField Job typ
+</span><span class="hs-identifier hs-var">JobSparkJobId</span></span><span> </span><span class="annot"><span class="annottext">EntityField Job (Maybe String) -&gt; Maybe String -&gt; Update Job
+forall v typ.
+PersistField typ =&gt;
+EntityField v typ -&gt; typ -&gt; Update v
+</span><span class="hs-operator hs-var">=.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Maybe String
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679213215"><span class="hs-identifier hs-var">sparkAppId</span></a></span><span class="hs-special">)</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">EntityField Job (Maybe String)
+forall typ. (typ ~ Maybe String) =&gt; EntityField Job typ
+</span><span class="hs-identifier hs-var">JobStatus</span></span><span> </span><span class="annot"><span class="annottext">EntityField Job (Maybe String) -&gt; Maybe String -&gt; Update Job
+forall v typ.
+PersistField typ =&gt;
+EntityField v typ -&gt; typ -&gt; Update v
+</span><span class="hs-operator hs-var">=.</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Maybe String
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Submitted&quot;</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span> </span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213217"><span class="hs-identifier hs-var">pool</span></a></span><span>
+</span><span id="line-67"></span><span>
+</span><span id="line-68"></span><span>  </span><span class="annot"><a href="JobSource.html#getParam"><span class="hs-identifier hs-type">getParam</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span>
+</span><span id="line-69"></span><span>  </span><span id="local-6989586621679213211"><span class="annot"><span class="annottext">getParam :: String -&gt; IO SqlParam
+</span><a href="#local-6989586621679213211"><span class="hs-identifier hs-var hs-var hs-var hs-var">getParam</span></a></span></span><span> </span><span id="local-6989586621679213210"><span class="annot"><span class="annottext">env :: String
+</span><a href="#local-6989586621679213210"><span class="hs-identifier hs-var">env</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String -&gt; Int -&gt; IO SqlParam
+</span><span class="hs-identifier hs-var">getSqlParam</span></span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679213210"><span class="hs-identifier hs-var">env</span></a></span><span> </span><span class="annot"><span class="hs-number">10</span></span><span>
+</span><span id="line-70"></span><span>
+</span><span id="line-71"></span><span>  </span><span class="annot"><a href="JobSource.html#createJob"><span class="hs-identifier hs-type">createJob</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Int64</span></span><span>
+</span><span id="line-72"></span><span>  </span><span id="local-6989586621679213209"><span class="annot"><span class="annottext">createJob :: SqlParam -&gt; Job -&gt; IO Int64
+</span><a href="#local-6989586621679213209"><span class="hs-identifier hs-var hs-var hs-var hs-var">createJob</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213208"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213208"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span id="local-6989586621679213207"><span class="annot"><span class="annottext">job :: Job
+</span><a href="#local-6989586621679213207"><span class="hs-identifier hs-var">job</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Key Job -&gt; Int64
+forall record.
+ToBackendKey SqlBackend record =&gt;
+Key record -&gt; Int64
+</span><span class="hs-identifier hs-var">fromSqlKey</span></span><span> </span><span class="annot"><span class="annottext">(Key Job -&gt; Int64) -&gt; IO (Key Job) -&gt; IO Int64
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-operator hs-var">&lt;$&gt;</span></span><span> </span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) (Key Job)
+-&gt; Pool SqlBackend -&gt; IO (Key Job)
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Job -&gt; ReaderT SqlBackend (NoLoggingT (ResourceT IO)) (Key Job)
+forall backend (m :: * -&gt; *) record.
+(PersistStoreWrite backend, MonadIO m,
+ PersistRecordBackend record backend) =&gt;
+record -&gt; ReaderT backend m (Key record)
+</span><span class="hs-identifier hs-var">insert</span></span><span> </span><span class="annot"><span class="annottext">Job
+</span><a href="#local-6989586621679213207"><span class="hs-identifier hs-var">job</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213208"><span class="hs-identifier hs-var">pool</span></a></span><span>
+</span><span id="line-73"></span><span>  </span><span>
+</span><span id="line-74"></span><span>  </span><span class="annot"><a href="JobSource.html#allQueued"><span class="hs-identifier hs-type">allQueued</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span class="hs-special">]</span><span>
+</span><span id="line-75"></span><span>  </span><span id="local-6989586621679213205"><span class="annot"><span class="annottext">allQueued :: SqlParam -&gt; ExceptT String IO [Job]
+</span><a href="#local-6989586621679213205"><span class="hs-identifier hs-var hs-var hs-var hs-var">allQueued</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">SqlParam</span></span><span> </span><span id="local-6989586621679213204"><span class="annot"><span class="annottext">pool :: Pool SqlBackend
+</span><a href="#local-6989586621679213204"><span class="hs-identifier hs-var">pool</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Either String [Job]) -&gt; ExceptT String IO [Job]
+forall e (m :: * -&gt; *) a. m (Either e a) -&gt; ExceptT e m a
+</span><span class="hs-identifier hs-var">ExceptT</span></span><span> </span><span class="annot"><span class="annottext">(IO (Either String [Job]) -&gt; ExceptT String IO [Job])
+-&gt; IO (Either String [Job]) -&gt; ExceptT String IO [Job]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span>  </span><span class="hs-keyword">do</span><span>
+</span><span id="line-76"></span><span>                                </span><span id="local-6989586621679213202"><span class="annot"><span class="annottext">Either SomeException [Job]
+</span><a href="#local-6989586621679213202"><span class="hs-identifier hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO [Job] -&gt; IO (Either SomeException [Job])
+forall e a. Exception e =&gt; IO a -&gt; IO (Either e a)
+</span><span class="hs-identifier hs-var">try</span></span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) [Job]
+-&gt; Pool SqlBackend -&gt; IO [Job]
+forall backend a.
+BackendCompatible SqlBackend backend =&gt;
+ReaderT backend (NoLoggingT (ResourceT IO)) a
+-&gt; Pool backend -&gt; IO a
+</span><span class="hs-identifier hs-var">runSqlPersistMPool</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">ReaderT SqlBackend (NoLoggingT (ResourceT IO)) [Job]
+</span><span class="hs-identifier hs-var">jobsAllQueuedEx</span></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Pool SqlBackend
+</span><a href="#local-6989586621679213204"><span class="hs-identifier hs-var">pool</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SomeException</span></span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">Job</span></span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-77"></span><span>                                </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either SomeException [Job]
+</span><a href="#local-6989586621679213202"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-78"></span><span>                                  </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679213200"><span class="annot"><span class="annottext">ex :: SomeException
+</span><a href="#local-6989586621679213200"><span class="hs-identifier hs-var">ex</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String [Job] -&gt; IO (Either String [Job])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Either String [Job]
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String [Job]) -&gt; String -&gt; Either String [Job]
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Caught exception  : &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; String -&gt; String
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SomeException -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">SomeException
+</span><a href="#local-6989586621679213200"><span class="hs-identifier hs-var">ex</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-special">)</span><span>
+</span><span id="line-79"></span><span>                                  </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679213198"><span class="annot"><span class="annottext">val :: [Job]
+</span><a href="#local-6989586621679213198"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String [Job] -&gt; IO (Either String [Job])
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[Job] -&gt; Either String [Job]
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">[Job]
+</span><a href="#local-6989586621679213198"><span class="hs-identifier hs-var">val</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span></pre></body></html>

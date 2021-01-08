@@ -1,0 +1,320 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE InstanceSigs #-}</span><span>
+</span><span id="line-3"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">SparkRun</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-4"></span><span>
+</span><span id="line-5"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except</span></span><span>
+</span><span id="line-6"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-7"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>
+</span><span id="line-8"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span>
+</span><span id="line-9"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span>
+</span><span id="line-10"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-11"></span><span>
+</span><span id="line-12"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Lens</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-operator">(&amp;)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(^.)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(^?)</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="hs-operator">(.~)</span></span><span class="hs-special">)</span><span>
+</span><span id="line-13"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">FromJSON</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">ToJSON</span></span><span class="hs-special">)</span><span>
+</span><span id="line-14"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Types</span></span><span>
+</span><span id="line-15"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Lens</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">key</span></span><span class="hs-special">)</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy.Char8</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-21"></span><span class="hs-comment">--Data.ByteString.Lazy.Char8</span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Network.Wreq</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">W</span></span><span>
+</span><span id="line-24"></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><a href="StandaloneRun.html"><span class="hs-identifier">StandaloneRun</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier">StandaloneParam</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-27"></span><span>
+</span><span id="line-28"></span><span id="local-6989586621679213647"><span id="local-6989586621679213648"></span></span><span class="hs-keyword">data</span><span> </span><span id="SpResponse"><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-var">SpResponse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="SpResponse"><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-var">SpResponse</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="action"><span class="annot"><span class="annottext">SpResponse -&gt; Text
+</span><a href="SparkRun.html#action"><span class="hs-identifier hs-var hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-29"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="driverState"><span class="annot"><span class="annottext">SpResponse -&gt; Maybe Text
+</span><a href="SparkRun.html#driverState"><span class="hs-identifier hs-var hs-var">driverState</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">,</span><span> </span><span id="message"><span class="annot"><span class="annottext">SpResponse -&gt; Maybe Text
+</span><a href="SparkRun.html#message"><span class="hs-identifier hs-var hs-var">message</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span class="hs-special">,</span><span> </span><span id="serverSparkVersion"><span class="annot"><span class="annottext">SpResponse -&gt; Text
+</span><a href="SparkRun.html#serverSparkVersion"><span class="hs-identifier hs-var hs-var">serverSparkVersion</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-30"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="submissionId"><span class="annot"><span class="annottext">SpResponse -&gt; String
+</span><a href="SparkRun.html#submissionId"><span class="hs-identifier hs-var hs-var">submissionId</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">,</span><span> </span><span id="success"><span class="annot"><span class="annottext">SpResponse -&gt; Bool
+</span><a href="SparkRun.html#success"><span class="hs-identifier hs-var hs-var">success</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Bool</span></span><span> </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213634"><span id="local-6989586621679213636"><span id="local-6989586621679213638"><span class="annot"><span class="annottext">Int -&gt; SpResponse -&gt; ShowS
+[SpResponse] -&gt; ShowS
+SpResponse -&gt; String
+(Int -&gt; SpResponse -&gt; ShowS)
+-&gt; (SpResponse -&gt; String)
+-&gt; ([SpResponse] -&gt; ShowS)
+-&gt; Show SpResponse
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [SpResponse] -&gt; ShowS
+$cshowList :: [SpResponse] -&gt; ShowS
+show :: SpResponse -&gt; String
+$cshow :: SpResponse -&gt; String
+showsPrec :: Int -&gt; SpResponse -&gt; ShowS
+$cshowsPrec :: Int -&gt; SpResponse -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. SpResponse -&gt; Rep SpResponse x)
+-&gt; (forall x. Rep SpResponse x -&gt; SpResponse) -&gt; Generic SpResponse
+forall x. Rep SpResponse x -&gt; SpResponse
+forall x. SpResponse -&gt; Rep SpResponse x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep SpResponse x -&gt; SpResponse
+$cfrom :: forall x. SpResponse -&gt; Rep SpResponse x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-31"></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213626"><span id="local-6989586621679213628"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span></span></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213617"><span id="local-6989586621679213619"><span id="local-6989586621679213621"><span id="local-6989586621679213623"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span></span></span></span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span id="local-6989586621679213614"><span id="local-6989586621679213615"></span></span><span class="hs-keyword">data</span><span> </span><span id="SparkCommand"><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-var">SparkCommand</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="SparkCommand"><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-var">SparkCommand</span></a></span></span><span> </span><span class="hs-special">{</span><span> </span><span id="sparkClass"><span class="annot"><span class="annottext">SparkCommand -&gt; String
+</span><a href="SparkRun.html#sparkClass"><span class="hs-identifier hs-var hs-var">sparkClass</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-36"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="applicationJar"><span class="annot"><span class="annottext">SparkCommand -&gt; String
+</span><a href="SparkRun.html#applicationJar"><span class="hs-identifier hs-var hs-var">applicationJar</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-37"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="argList"><span class="annot"><span class="annottext">SparkCommand -&gt; [String]
+</span><a href="SparkRun.html#argList"><span class="hs-identifier hs-var hs-var">argList</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-38"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213604"><span id="local-6989586621679213606"><span id="local-6989586621679213608"><span class="annot"><span class="annottext">Int -&gt; SparkCommand -&gt; ShowS
+[SparkCommand] -&gt; ShowS
+SparkCommand -&gt; String
+(Int -&gt; SparkCommand -&gt; ShowS)
+-&gt; (SparkCommand -&gt; String)
+-&gt; ([SparkCommand] -&gt; ShowS)
+-&gt; Show SparkCommand
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [SparkCommand] -&gt; ShowS
+$cshowList :: [SparkCommand] -&gt; ShowS
+show :: SparkCommand -&gt; String
+$cshow :: SparkCommand -&gt; String
+showsPrec :: Int -&gt; SparkCommand -&gt; ShowS
+$cshowsPrec :: Int -&gt; SparkCommand -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. SparkCommand -&gt; Rep SparkCommand x)
+-&gt; (forall x. Rep SparkCommand x -&gt; SparkCommand)
+-&gt; Generic SparkCommand
+forall x. Rep SparkCommand x -&gt; SparkCommand
+forall x. SparkCommand -&gt; Rep SparkCommand x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep SparkCommand x -&gt; SparkCommand
+$cfrom :: forall x. SparkCommand -&gt; Rep SparkCommand x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-39"></span><span>
+</span><span id="line-40"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213598"><span id="local-6989586621679213600"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-type">SparkCommand</span></a></span></span></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213590"><span id="local-6989586621679213592"><span id="local-6989586621679213594"><span id="local-6989586621679213596"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-type">SparkCommand</span></a></span></span></span></span></span><span>
+</span><span id="line-42"></span><span class="hs-comment">{-
+  Algebra for interacting with various Spark Cluster manager
+-}</span><span>
+</span><span id="line-45"></span><span class="hs-keyword">class</span><span> </span><span id="SparkRun"><span class="annot"><a href="SparkRun.html#SparkRun"><span class="hs-identifier hs-var">SparkRun</span></a></span></span><span> </span><span id="local-6989586621679213688"><span class="annot"><a href="#local-6989586621679213688"><span class="hs-identifier hs-type">v</span></a></span></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-46"></span><span>  </span><span id="postApplication"><span class="annot"><a href="SparkRun.html#postApplication"><span class="hs-identifier hs-type">postApplication</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213688"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span>
+</span><span id="line-47"></span><span>  </span><span id="getApplication"><span class="annot"><a href="SparkRun.html#getApplication"><span class="hs-identifier hs-type">getApplication</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213688"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span>
+</span><span id="line-48"></span><span>  </span><span id="generateParam"><span class="annot"><a href="SparkRun.html#generateParam"><span class="hs-identifier hs-type">generateParam</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="#local-6989586621679213688"><span class="hs-identifier hs-type">v</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-type">SparkCommand</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>  </span><span class="annot"><a href="#local-6989586621679213688"><span class="hs-identifier hs-type">v</span></a></span><span>
+</span><span id="line-49"></span><span>
+</span><span id="line-50"></span><span class="hs-comment">{-|
+  Instance for interacting with Standalone Cluster Manager
+
+  ExceptT usage
+    https://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html#g:4
+
+    Usage reasons
+    https://stackoverflow.com/questions/53453944/what-purpose-does-the-complexity-of-except-serve-in-haskell
+  ANTI PATTERNS:
+    https://www.fpcomplete.com/haskell/tutorial/exceptions/
+    https://www.fpcomplete.com/blog/2016/11/exceptions-best-practices-haskell/
+
+  https://www.schoolofhaskell.com/user/snoyberg/general-haskell/exceptions/catching-all-exceptions
+  https://www.schoolofhaskell.com/school/starting-with-haskell/basics-of-haskell/10_Error_Handling
+  https://www.stackbuilders.com/news/errors-and-exceptions-in-haskell
+  https://stackoverflow.com/questions/6009384/exception-handling-in-haskell
+-}</span><span>
+</span><span id="line-67"></span><span class="hs-comment">-- FIXME: read host port from standaloneConf.json</span><span>
+</span><span id="line-68"></span><span class="hs-keyword">instance</span><span> </span><span class="annot"><a href="SparkRun.html#SparkRun"><span class="hs-identifier hs-type">SparkRun</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-69"></span><span>  </span><span class="annot"><a href="SparkRun.html#postApplication"><span class="hs-identifier hs-type">postApplication</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span>
+</span><span id="line-70"></span><span>  </span><span id="local-6989586621679213582"><span class="annot"><span class="annottext">postApplication :: StandaloneParam -&gt; ExceptT String IO SpResponse
+</span><a href="#local-6989586621679213582"><span class="hs-identifier hs-var hs-var hs-var hs-var">postApplication</span></a></span></span><span> </span><span id="local-6989586621679213581"><span class="annot"><span class="annottext">sp :: StandaloneParam
+</span><a href="#local-6989586621679213581"><span class="hs-identifier hs-var">sp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse
+forall e (m :: * -&gt; *) a. m (Either e a) -&gt; ExceptT e m a
+</span><span class="hs-identifier hs-var">ExceptT</span></span><span> </span><span class="annot"><span class="annottext">(IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse)
+-&gt; IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-71"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679213579"><span class="annot"><span class="annottext">opts :: Options
+</span><a href="#local-6989586621679213579"><span class="hs-identifier hs-var hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Options
+</span><span class="hs-identifier hs-var">defaults</span></span><span>
+</span><span id="line-72"></span><span>    </span><span id="local-6989586621679213577"><span class="annot"><span class="annottext">Either SomeException (Response ByteString)
+</span><a href="#local-6989586621679213577"><span class="hs-identifier hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Response ByteString)
+-&gt; IO (Either SomeException (Response ByteString))
+forall e a. Exception e =&gt; IO a -&gt; IO (Either e a)
+</span><span class="hs-identifier hs-var">try</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Options -&gt; String -&gt; ByteString -&gt; IO (Response ByteString)
+forall a.
+Postable a =&gt;
+Options -&gt; String -&gt; a -&gt; IO (Response ByteString)
+</span><span class="hs-identifier hs-var">postWith</span></span><span> </span><span class="annot"><span class="annottext">Options
+</span><a href="#local-6989586621679213579"><span class="hs-identifier hs-var">opts</span></a></span><span> </span><span class="annot"><span class="hs-string">&quot;http://127.0.0.1:6066/v1/submissions/create&quot;</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">StandaloneParam -&gt; ByteString
+forall a. ToJSON a =&gt; a -&gt; ByteString
+</span><span class="hs-identifier hs-var">encode</span></span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213581"><span class="hs-identifier hs-var">sp</span></a></span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SomeException</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Response</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">B.ByteString</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either SomeException (Response ByteString)
+</span><a href="#local-6989586621679213577"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-74"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679213573"><span class="annot"><span class="annottext">ex :: SomeException
+</span><a href="#local-6989586621679213573"><span class="hs-identifier hs-var">ex</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String SpResponse -&gt; IO (Either String SpResponse)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Either String SpResponse
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String SpResponse)
+-&gt; String -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Caught exception  : &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">SomeException -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">SomeException
+</span><a href="#local-6989586621679213573"><span class="hs-identifier hs-var">ex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-75"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679213571"><span class="annot"><span class="annottext">val :: Response ByteString
+</span><a href="#local-6989586621679213571"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String SpResponse -&gt; IO (Either String SpResponse)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Either String SpResponse
+</span><a href="#local-6989586621679213570"><span class="hs-identifier hs-var">spResponse</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-76"></span><span>          </span><span id="local-6989586621679213569"><span class="annot"><span class="annottext">resp :: Maybe ByteString
+</span><a href="#local-6989586621679213569"><span class="hs-identifier hs-var hs-var">resp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Response ByteString
+</span><a href="#local-6989586621679213571"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Response ByteString
+-&gt; Getting (First ByteString) (Response ByteString) ByteString
+-&gt; Maybe ByteString
+forall s a. s -&gt; Getting (First a) s a -&gt; Maybe a
+</span><span class="hs-operator hs-var">^?</span></span><span> </span><span class="annot"><span class="annottext">Getting (First ByteString) (Response ByteString) ByteString
+forall body0 body1.
+Lens (Response body0) (Response body1) body0 body1
+</span><span class="hs-identifier hs-var">responseBody</span></span><span>
+</span><span id="line-77"></span><span>          </span><span id="local-6989586621679213570"><span class="annot"><span class="annottext">spResponse :: Either String SpResponse
+</span><a href="#local-6989586621679213570"><span class="hs-identifier hs-var hs-var">spResponse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe (Maybe SpResponse) -&gt; Maybe SpResponse
+forall (m :: * -&gt; *) a. Monad m =&gt; m (m a) -&gt; m a
+</span><span class="hs-identifier hs-var">join</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Maybe SpResponse)
+-&gt; Maybe ByteString -&gt; Maybe (Maybe SpResponse)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679213567"><span class="annot"><span class="annottext">x :: ByteString
+</span><a href="#local-6989586621679213567"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Maybe SpResponse
+forall a. FromJSON a =&gt; ByteString -&gt; Maybe a
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679213567"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe ByteString
+</span><a href="#local-6989586621679213569"><span class="hs-identifier hs-var">resp</span></a></span><span> </span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-78"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679213565"><span class="annot"><span class="annottext">sp :: SpResponse
+</span><a href="#local-6989586621679213565"><span class="hs-identifier hs-var">sp</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SpResponse -&gt; Either String SpResponse
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(SpResponse -&gt; Either String SpResponse)
+-&gt; SpResponse -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SpResponse
+</span><a href="#local-6989586621679213565"><span class="hs-identifier hs-var">sp</span></a></span><span>
+</span><span id="line-79"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String SpResponse
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String SpResponse)
+-&gt; String -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Standalone Submit Failed for unknown reasons: &quot;</span></span><span>
+</span><span id="line-80"></span><span>
+</span><span id="line-81"></span><span>  </span><span class="hs-comment">{-|
+    Api call for tracking jobs
+    http://127.0.0.1:6066/v1/submissions/status/asdfsdfsdf
+    {
+    &quot;action&quot; : &quot;SubmissionStatusResponse&quot;,
+    &quot;serverSparkVersion&quot; : &quot;2.4.0&quot;,
+    &quot;submissionId&quot; : &quot;asdfsdfsdf&quot;,
+    &quot;success&quot; : false
+    }
+  -}</span><span>
+</span><span id="line-91"></span><span>  </span><span class="hs-comment">{-
+    http://hackage.haskell.org/package/mtl-2.2.2/docs/Control-Monad-Except.html#g:4
+  -}</span><span>
+</span><span id="line-94"></span><span>  </span><span class="hs-comment">-- FIXME: read host port from standaloneConf.json</span><span>
+</span><span id="line-95"></span><span>  </span><span class="annot"><a href="SparkRun.html#getApplication"><span class="hs-identifier hs-type">getApplication</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">ExceptT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span>
+</span><span id="line-96"></span><span>  </span><span id="local-6989586621679213564"><span class="annot"><span class="annottext">getApplication :: StandaloneParam -&gt; ExceptT String IO SpResponse
+</span><a href="#local-6989586621679213564"><span class="hs-identifier hs-var hs-var hs-var hs-var">getApplication</span></a></span></span><span> </span><span id="local-6989586621679213563"><span class="annot"><span class="annottext">spm :: StandaloneParam
+</span><a href="#local-6989586621679213563"><span class="hs-identifier hs-var">spm</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse
+forall e (m :: * -&gt; *) a. m (Either e a) -&gt; ExceptT e m a
+</span><span class="hs-identifier hs-var">ExceptT</span></span><span> </span><span class="annot"><span class="annottext">(IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse)
+-&gt; IO (Either String SpResponse) -&gt; ExceptT String IO SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-97"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679213562"><span class="annot"><span class="annottext">opts :: Options
+</span><a href="#local-6989586621679213562"><span class="hs-identifier hs-var hs-var">opts</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Options
+</span><span class="hs-identifier hs-var">defaults</span></span><span>
+</span><span id="line-98"></span><span>    </span><span id="local-6989586621679213561"><span class="annot"><span class="annottext">Either SomeException (Response ByteString)
+</span><a href="#local-6989586621679213561"><span class="hs-identifier hs-var">result</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">IO (Response ByteString)
+-&gt; IO (Either SomeException (Response ByteString))
+forall e a. Exception e =&gt; IO a -&gt; IO (Either e a)
+</span><span class="hs-identifier hs-var">try</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; IO (Response ByteString)
+</span><span class="hs-identifier hs-var">get</span></span><span> </span><span class="annot"><span class="hs-string">&quot;http://127.0.0.1:6066/v1/submissions/status/asdfsdfsdf&quot;</span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Either</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">SomeException</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Response</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">B.ByteString</span></span><span class="hs-special">)</span><span class="hs-special">)</span><span>
+</span><span id="line-99"></span><span>    </span><span class="hs-keyword">case</span><span> </span><span class="annot"><span class="annottext">Either SomeException (Response ByteString)
+</span><a href="#local-6989586621679213561"><span class="hs-identifier hs-var">result</span></a></span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-100"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Left</span></span><span> </span><span id="local-6989586621679213559"><span class="annot"><span class="annottext">ex :: SomeException
+</span><a href="#local-6989586621679213559"><span class="hs-identifier hs-var">ex</span></a></span></span><span>  </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String SpResponse -&gt; IO (Either String SpResponse)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">String -&gt; Either String SpResponse
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String SpResponse)
+-&gt; String -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Caught exception  : &quot;</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; ShowS
+forall a. [a] -&gt; [a] -&gt; [a]
+</span><span class="hs-operator hs-var">++</span></span><span> </span><span class="annot"><span class="annottext">SomeException -&gt; String
+forall a. Show a =&gt; a -&gt; String
+</span><span class="hs-identifier hs-var">show</span></span><span> </span><span class="annot"><span class="annottext">SomeException
+</span><a href="#local-6989586621679213559"><span class="hs-identifier hs-var">ex</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>      </span><span class="annot"><span class="hs-identifier hs-type">Right</span></span><span> </span><span id="local-6989586621679213558"><span class="annot"><span class="annottext">val :: Response ByteString
+</span><a href="#local-6989586621679213558"><span class="hs-identifier hs-var">val</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">Either String SpResponse -&gt; IO (Either String SpResponse)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">Either String SpResponse
+</span><a href="#local-6989586621679213557"><span class="hs-identifier hs-var">spResponse</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-102"></span><span>          </span><span id="local-6989586621679213556"><span class="annot"><span class="annottext">resp :: Maybe ByteString
+</span><a href="#local-6989586621679213556"><span class="hs-identifier hs-var hs-var">resp</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Response ByteString
+</span><a href="#local-6989586621679213558"><span class="hs-identifier hs-var">val</span></a></span><span> </span><span class="annot"><span class="annottext">Response ByteString
+-&gt; Getting (First ByteString) (Response ByteString) ByteString
+-&gt; Maybe ByteString
+forall s a. s -&gt; Getting (First a) s a -&gt; Maybe a
+</span><span class="hs-operator hs-var">^?</span></span><span> </span><span class="annot"><span class="annottext">Getting (First ByteString) (Response ByteString) ByteString
+forall body0 body1.
+Lens (Response body0) (Response body1) body0 body1
+</span><span class="hs-identifier hs-var">responseBody</span></span><span>
+</span><span id="line-103"></span><span>          </span><span id="local-6989586621679213557"><span class="annot"><span class="annottext">spResponse :: Either String SpResponse
+</span><a href="#local-6989586621679213557"><span class="hs-identifier hs-var hs-var">spResponse</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">case</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Maybe (Maybe SpResponse) -&gt; Maybe SpResponse
+forall (m :: * -&gt; *) a. Monad m =&gt; m (m a) -&gt; m a
+</span><span class="hs-identifier hs-var">join</span></span><span> </span><span class="hs-special">(</span><span> </span><span class="annot"><span class="annottext">(ByteString -&gt; Maybe SpResponse)
+-&gt; Maybe ByteString -&gt; Maybe (Maybe SpResponse)
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="hs-glyph">\</span><span id="local-6989586621679213555"><span class="annot"><span class="annottext">x :: ByteString
+</span><a href="#local-6989586621679213555"><span class="hs-identifier hs-var">x</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Maybe SpResponse
+forall a. FromJSON a =&gt; ByteString -&gt; Maybe a
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679213555"><span class="hs-identifier hs-var">x</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="SparkRun.html#SpResponse"><span class="hs-identifier hs-type">SpResponse</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe ByteString
+</span><a href="#local-6989586621679213556"><span class="hs-identifier hs-var">resp</span></a></span><span> </span><span class="hs-special">)</span><span class="hs-special">)</span><span> </span><span class="hs-keyword">of</span><span>
+</span><span id="line-104"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679213554"><span class="annot"><span class="annottext">sp :: SpResponse
+</span><a href="#local-6989586621679213554"><span class="hs-identifier hs-var">sp</span></a></span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">SpResponse -&gt; Either String SpResponse
+forall a b. b -&gt; Either a b
+</span><span class="hs-identifier hs-var">Right</span></span><span> </span><span class="annot"><span class="annottext">(SpResponse -&gt; Either String SpResponse)
+-&gt; SpResponse -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">SpResponse
+</span><a href="#local-6989586621679213554"><span class="hs-identifier hs-var">sp</span></a></span><span>
+</span><span id="line-105"></span><span>            </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="annottext">String -&gt; Either String SpResponse
+forall a b. a -&gt; Either a b
+</span><span class="hs-identifier hs-var">Left</span></span><span> </span><span class="annot"><span class="annottext">(String -&gt; Either String SpResponse)
+-&gt; String -&gt; Either String SpResponse
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="hs-string">&quot;Some Other problem&quot;</span></span><span>
+</span><span id="line-106"></span><span>
+</span><span id="line-107"></span><span>  </span><span class="annot"><a href="SparkRun.html#generateParam"><span class="hs-identifier hs-type">generateParam</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><a href="SparkRun.html#SparkCommand"><span class="hs-identifier hs-type">SparkCommand</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span>  </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span>
+</span><span id="line-108"></span><span>  </span><span id="local-6989586621679213553"><span class="annot"><span class="annottext">generateParam :: StandaloneParam -&gt; SparkCommand -&gt; StandaloneParam
+</span><a href="#local-6989586621679213553"><span class="hs-identifier hs-var hs-var hs-var hs-var">generateParam</span></a></span></span><span> </span><span id="local-6989586621679213552"><span class="annot"><span class="annottext">spm :: StandaloneParam
+</span><a href="#local-6989586621679213552"><span class="hs-identifier hs-var">spm</span></a></span></span><span> </span><span id="local-6989586621679213551"><span class="annot"><span class="annottext">sc :: SparkCommand
+</span><a href="#local-6989586621679213551"><span class="hs-identifier hs-var">sc</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213550"><span class="hs-identifier hs-var">standaloneParam</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-109"></span><span>    </span><span id="local-6989586621679213549"><span class="annot"><span class="annottext">appRes :: String
+</span><a href="#local-6989586621679213549"><span class="hs-identifier hs-var hs-var">appRes</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SparkCommand -&gt; String
+</span><a href="SparkRun.html#applicationJar"><span class="hs-identifier hs-var hs-var">applicationJar</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SparkCommand
+</span><a href="#local-6989586621679213551"><span class="hs-identifier hs-var">sc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-110"></span><span>    </span><span id="local-6989586621679213548"><span class="annot"><span class="annottext">sparkCls :: String
+</span><a href="#local-6989586621679213548"><span class="hs-identifier hs-var hs-var">sparkCls</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">SparkCommand -&gt; String
+</span><a href="SparkRun.html#sparkClass"><span class="hs-identifier hs-var hs-var">sparkClass</span></a></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">SparkCommand
+</span><a href="#local-6989586621679213551"><span class="hs-identifier hs-var">sc</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-111"></span><span>    </span><span id="local-6989586621679213550"><span class="annot"><span class="annottext">standaloneParam :: StandaloneParam
+</span><a href="#local-6989586621679213550"><span class="hs-identifier hs-var hs-var">standaloneParam</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213552"><span class="hs-identifier hs-var">spm</span></a></span><span> </span><span class="hs-special">{</span><span class="annot"><span class="annottext">mainClass :: String
+</span><a href="#local-6989586621679213547"><span class="hs-identifier hs-var">mainClass</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679213548"><span class="hs-identifier hs-var">sparkCls</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">appResource :: String
+</span><a href="#local-6989586621679213546"><span class="hs-identifier hs-var">appResource</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">String
+</span><a href="#local-6989586621679213549"><span class="hs-identifier hs-var">appRes</span></a></span><span class="hs-special">}</span><span>
+</span><span id="line-112"></span><span>
+</span><span id="line-113"></span></pre></body></html>

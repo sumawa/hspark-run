@@ -1,0 +1,316 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><link rel="stylesheet" type="text/css" href="style.css" /><script type="text/javascript" src="highlight.js"></script></head><body><pre><span class="hs-pragma">{-# LANGUAGE OverloadedStrings #-}</span><span>
+</span><span id="line-2"></span><span class="hs-pragma">{-# LANGUAGE DeriveGeneric, OverloadedStrings, ScopedTypeVariables #-}</span><span>
+</span><span id="line-3"></span><span class="hs-comment">{-
+  References
+  http://www.serpentine.com/wreq/tutorial.html
+  --https://subscription.packtpub.com/book/big_data_and_business_intelligence/9781783286331/1/ch01lvl1sec13/examining-a-json-file-with-the-aeson-package
+-}</span><span>
+</span><span id="line-8"></span><span class="hs-keyword">module</span><span> </span><span class="hs-identifier">StandaloneRun</span><span> </span><span class="hs-special">(</span><span>
+</span><span id="line-9"></span><span>  </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier">StandaloneParam</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-10"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier">StandaloneConf</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-11"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier">Wrapper</span></a></span><span class="hs-special">(</span><span class="hs-glyph">..</span><span class="hs-special">)</span><span>
+</span><span id="line-12"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="StandaloneRun.html#hardcodedConf"><span class="hs-identifier">hardcodedConf</span></a></span><span>
+</span><span id="line-13"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="StandaloneRun.html#readConf"><span class="hs-identifier">readConf</span></a></span><span>
+</span><span id="line-14"></span><span>  </span><span class="hs-special">,</span><span> </span><span class="annot"><a href="StandaloneRun.html#evalConf"><span class="hs-identifier">evalConf</span></a></span><span>
+</span><span id="line-15"></span><span>  </span><span class="hs-special">)</span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-16"></span><span>
+</span><span id="line-17"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">FromJSON</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-identifier">ToJSON</span></span><span class="hs-special">)</span><span>
+</span><span id="line-18"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Types</span></span><span>
+</span><span id="line-19"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson.Lens</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">key</span></span><span class="hs-special">)</span><span>
+</span><span id="line-20"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Map</span></span><span class="hs-special">)</span><span>
+</span><span id="line-21"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">M</span></span><span>
+</span><span id="line-22"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Text</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Text</span></span><span class="hs-special">)</span><span>
+</span><span id="line-23"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">GHC.Generics</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-24"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">E</span></span><span>
+</span><span id="line-25"></span><span>
+</span><span id="line-26"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Aeson</span></span><span>
+</span><span id="line-27"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Applicative</span></span><span>
+</span><span id="line-28"></span><span class="hs-keyword">import</span><span> </span><span class="hs-keyword">qualified</span><span> </span><span class="annot"><span class="hs-identifier">Data.ByteString.Lazy.Char8</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">B</span></span><span>
+</span><span id="line-29"></span><span>
+</span><span id="line-30"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Typeable</span></span><span>
+</span><span id="line-31"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad</span></span><span>
+</span><span id="line-32"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Except</span></span><span>
+</span><span id="line-33"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.IO.Class</span></span><span>
+</span><span id="line-34"></span><span>
+</span><span id="line-35"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Network.Wreq</span></span><span> </span><span class="hs-keyword">as</span><span> </span><span class="annot"><span class="hs-identifier">W</span></span><span>
+</span><span id="line-36"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Schema</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier">Job</span></span><span class="hs-special">)</span><span>
+</span><span id="line-37"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Schema</span></span><span>
+</span><span id="line-38"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Maybe</span></span><span>
+</span><span id="line-39"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Data.Map</span></span><span>
+</span><span id="line-40"></span><span>
+</span><span id="line-41"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Monad.Trans.Maybe</span></span><span>
+</span><span id="line-42"></span><span class="hs-keyword">import</span><span> </span><span class="annot"><span class="hs-identifier">Control.Exception</span></span><span>
+</span><span id="line-43"></span><span>
+</span><span id="line-44"></span><span class="hs-comment">--data SparkRunException</span><span>
+</span><span id="line-45"></span><span class="hs-comment">--  = SubmitFailed</span><span>
+</span><span id="line-46"></span><span class="hs-comment">--  | FetchFailed</span><span>
+</span><span id="line-47"></span><span class="hs-comment">--  deriving (Show,Typeable)</span><span>
+</span><span id="line-48"></span><span class="hs-comment">--</span><span>
+</span><span id="line-49"></span><span class="hs-comment">--instance Exception SparkRunException</span><span>
+</span><span id="line-50"></span><span>
+</span><span id="line-51"></span><span class="hs-comment">-- Could be used for generic request / response processing</span><span>
+</span><span id="line-52"></span><span id="local-6989586621679213490"><span id="local-6989586621679213491"></span></span><span class="hs-keyword">data</span><span> </span><span id="GetBody"><span class="annot"><a href="StandaloneRun.html#GetBody"><span class="hs-identifier hs-var">GetBody</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="GetBody"><span class="annot"><a href="StandaloneRun.html#GetBody"><span class="hs-identifier hs-var">GetBody</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-53"></span><span>    </span><span id="headers"><span class="annot"><span class="annottext">GetBody -&gt; Map Text Text
+</span><a href="StandaloneRun.html#headers"><span class="hs-identifier hs-var hs-var">headers</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-54"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="args"><span class="annot"><span class="annottext">GetBody -&gt; Map Text Text
+</span><a href="StandaloneRun.html#args"><span class="hs-identifier hs-var hs-var">args</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-55"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="origin"><span class="annot"><span class="annottext">GetBody -&gt; Text
+</span><a href="StandaloneRun.html#origin"><span class="hs-identifier hs-var hs-var">origin</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-56"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="url"><span class="annot"><span class="annottext">GetBody -&gt; Text
+</span><a href="StandaloneRun.html#url"><span class="hs-identifier hs-var hs-var">url</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-57"></span><span>  </span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213479"><span id="local-6989586621679213481"><span id="local-6989586621679213483"><span class="annot"><span class="annottext">Int -&gt; GetBody -&gt; ShowS
+[GetBody] -&gt; ShowS
+GetBody -&gt; String
+(Int -&gt; GetBody -&gt; ShowS)
+-&gt; (GetBody -&gt; String) -&gt; ([GetBody] -&gt; ShowS) -&gt; Show GetBody
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [GetBody] -&gt; ShowS
+$cshowList :: [GetBody] -&gt; ShowS
+show :: GetBody -&gt; String
+$cshow :: GetBody -&gt; String
+showsPrec :: Int -&gt; GetBody -&gt; ShowS
+$cshowsPrec :: Int -&gt; GetBody -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">(forall x. GetBody -&gt; Rep GetBody x)
+-&gt; (forall x. Rep GetBody x -&gt; GetBody) -&gt; Generic GetBody
+forall x. Rep GetBody x -&gt; GetBody
+forall x. GetBody -&gt; Rep GetBody x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep GetBody x -&gt; GetBody
+$cfrom :: forall x. GetBody -&gt; Rep GetBody x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-58"></span><span>
+</span><span id="line-59"></span><span class="hs-comment">-- Get GHC to derive a FromJSON instance for us.</span><span>
+</span><span id="line-60"></span><span>
+</span><span id="line-61"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213471"><span id="local-6989586621679213473"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#GetBody"><span class="hs-identifier hs-type">GetBody</span></a></span></span></span><span>
+</span><span id="line-62"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213462"><span id="local-6989586621679213464"><span id="local-6989586621679213466"><span id="local-6989586621679213468"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#GetBody"><span class="hs-identifier hs-type">GetBody</span></a></span></span></span></span></span><span>
+</span><span id="line-63"></span><span>
+</span><span id="line-64"></span><span id="local-6989586621679213459"><span id="local-6989586621679213460"></span></span><span class="hs-keyword">data</span><span> </span><span id="EnvVar"><span class="annot"><a href="StandaloneRun.html#EnvVar"><span class="hs-identifier hs-var">EnvVar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="EnvVar"><span class="annot"><a href="StandaloneRun.html#EnvVar"><span class="hs-identifier hs-var">EnvVar</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-65"></span><span>    </span><span id="sp"><span class="annot"><span class="annottext">EnvVar -&gt; Text
+</span><a href="StandaloneRun.html#sp"><span class="hs-identifier hs-var hs-var">sp</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-66"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="spark_user"><span class="annot"><span class="annottext">EnvVar -&gt; Text
+</span><a href="StandaloneRun.html#spark_user"><span class="hs-identifier hs-var hs-var">spark_user</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Text</span></span><span>
+</span><span id="line-67"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213450"><span id="local-6989586621679213452"><span id="local-6989586621679213454"><span class="annot"><span class="annottext">Int -&gt; EnvVar -&gt; ShowS
+[EnvVar] -&gt; ShowS
+EnvVar -&gt; String
+(Int -&gt; EnvVar -&gt; ShowS)
+-&gt; (EnvVar -&gt; String) -&gt; ([EnvVar] -&gt; ShowS) -&gt; Show EnvVar
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [EnvVar] -&gt; ShowS
+$cshowList :: [EnvVar] -&gt; ShowS
+show :: EnvVar -&gt; String
+$cshow :: EnvVar -&gt; String
+showsPrec :: Int -&gt; EnvVar -&gt; ShowS
+$cshowsPrec :: Int -&gt; EnvVar -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. EnvVar -&gt; Rep EnvVar x)
+-&gt; (forall x. Rep EnvVar x -&gt; EnvVar) -&gt; Generic EnvVar
+forall x. Rep EnvVar x -&gt; EnvVar
+forall x. EnvVar -&gt; Rep EnvVar x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep EnvVar x -&gt; EnvVar
+$cfrom :: forall x. EnvVar -&gt; Rep EnvVar x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-68"></span><span>
+</span><span id="line-69"></span><span id="local-6989586621679213446"><span id="local-6989586621679213447"></span></span><span class="hs-keyword">data</span><span> </span><span id="StandaloneParam"><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-var">StandaloneParam</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="StandaloneParam"><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-var">StandaloneParam</span></a></span></span><span class="hs-special">{</span><span>
+</span><span id="line-70"></span><span>    </span><span id="action"><span class="annot"><span class="annottext">StandaloneParam -&gt; String
+</span><a href="StandaloneRun.html#action"><span class="hs-identifier hs-var hs-var">action</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-71"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="appResource"><span class="annot"><span class="annottext">StandaloneParam -&gt; String
+</span><a href="StandaloneRun.html#appResource"><span class="hs-identifier hs-var hs-var">appResource</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-72"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="sparkProperties"><span class="annot"><span class="annottext">StandaloneParam -&gt; Maybe (Map String String)
+</span><a href="StandaloneRun.html#sparkProperties"><span class="hs-identifier hs-var hs-var">sparkProperties</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-73"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="clientSparkVersion"><span class="annot"><span class="annottext">StandaloneParam -&gt; String
+</span><a href="StandaloneRun.html#clientSparkVersion"><span class="hs-identifier hs-var hs-var">clientSparkVersion</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-74"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="mainClass"><span class="annot"><span class="annottext">StandaloneParam -&gt; String
+</span><a href="StandaloneRun.html#mainClass"><span class="hs-identifier hs-var hs-var">mainClass</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-75"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="environmentVariables"><span class="annot"><span class="annottext">StandaloneParam -&gt; Maybe (Map String String)
+</span><a href="StandaloneRun.html#environmentVariables"><span class="hs-identifier hs-var hs-var">environmentVariables</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Map</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">)</span><span>
+</span><span id="line-76"></span><span>    </span><span class="hs-special">,</span><span> </span><span id="appArgs"><span class="annot"><span class="annottext">StandaloneParam -&gt; [String]
+</span><a href="StandaloneRun.html#appArgs"><span class="hs-identifier hs-var hs-var">appArgs</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span class="hs-special">]</span><span>
+</span><span id="line-77"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213432"><span id="local-6989586621679213434"><span id="local-6989586621679213436"><span class="annot"><span class="annottext">Int -&gt; StandaloneParam -&gt; ShowS
+[StandaloneParam] -&gt; ShowS
+StandaloneParam -&gt; String
+(Int -&gt; StandaloneParam -&gt; ShowS)
+-&gt; (StandaloneParam -&gt; String)
+-&gt; ([StandaloneParam] -&gt; ShowS)
+-&gt; Show StandaloneParam
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [StandaloneParam] -&gt; ShowS
+$cshowList :: [StandaloneParam] -&gt; ShowS
+show :: StandaloneParam -&gt; String
+$cshow :: StandaloneParam -&gt; String
+showsPrec :: Int -&gt; StandaloneParam -&gt; ShowS
+$cshowsPrec :: Int -&gt; StandaloneParam -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. StandaloneParam -&gt; Rep StandaloneParam x)
+-&gt; (forall x. Rep StandaloneParam x -&gt; StandaloneParam)
+-&gt; Generic StandaloneParam
+forall x. Rep StandaloneParam x -&gt; StandaloneParam
+forall x. StandaloneParam -&gt; Rep StandaloneParam x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep StandaloneParam x -&gt; StandaloneParam
+$cfrom :: forall x. StandaloneParam -&gt; Rep StandaloneParam x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-78"></span><span>
+</span><span id="line-79"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213426"><span id="local-6989586621679213428"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span></span></span><span>
+</span><span id="line-80"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213418"><span id="local-6989586621679213420"><span id="local-6989586621679213422"><span id="local-6989586621679213424"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span></span></span></span></span><span>
+</span><span id="line-81"></span><span>
+</span><span id="line-82"></span><span id="local-6989586621679213416"><span id="local-6989586621679213417"></span></span><span class="hs-keyword">data</span><span> </span><span id="StandaloneConf"><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-var">StandaloneConf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="StandaloneConf"><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-var">StandaloneConf</span></a></span></span><span class="hs-special">{</span><span>
+</span><span id="line-83"></span><span>  </span><span id="restHost"><span class="annot"><span class="annottext">StandaloneConf -&gt; String
+</span><a href="StandaloneRun.html#restHost"><span class="hs-identifier hs-var hs-var">restHost</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">String</span></span><span>
+</span><span id="line-84"></span><span>  </span><span class="hs-special">,</span><span> </span><span id="standaloneParam"><span class="annot"><span class="annottext">StandaloneConf -&gt; StandaloneParam
+</span><a href="StandaloneRun.html#standaloneParam"><span class="hs-identifier hs-var hs-var">standaloneParam</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span>
+</span><span id="line-85"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213407"><span id="local-6989586621679213409"><span id="local-6989586621679213411"><span class="annot"><span class="annottext">Int -&gt; StandaloneConf -&gt; ShowS
+[StandaloneConf] -&gt; ShowS
+StandaloneConf -&gt; String
+(Int -&gt; StandaloneConf -&gt; ShowS)
+-&gt; (StandaloneConf -&gt; String)
+-&gt; ([StandaloneConf] -&gt; ShowS)
+-&gt; Show StandaloneConf
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [StandaloneConf] -&gt; ShowS
+$cshowList :: [StandaloneConf] -&gt; ShowS
+show :: StandaloneConf -&gt; String
+$cshow :: StandaloneConf -&gt; String
+showsPrec :: Int -&gt; StandaloneConf -&gt; ShowS
+$cshowsPrec :: Int -&gt; StandaloneConf -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. StandaloneConf -&gt; Rep StandaloneConf x)
+-&gt; (forall x. Rep StandaloneConf x -&gt; StandaloneConf)
+-&gt; Generic StandaloneConf
+forall x. Rep StandaloneConf x -&gt; StandaloneConf
+forall x. StandaloneConf -&gt; Rep StandaloneConf x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep StandaloneConf x -&gt; StandaloneConf
+$cfrom :: forall x. StandaloneConf -&gt; Rep StandaloneConf x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-86"></span><span>
+</span><span id="line-87"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213401"><span id="local-6989586621679213403"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-type">StandaloneConf</span></a></span></span></span><span>
+</span><span id="line-88"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213393"><span id="local-6989586621679213395"><span id="local-6989586621679213397"><span id="local-6989586621679213399"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-type">StandaloneConf</span></a></span></span></span></span></span><span>
+</span><span id="line-89"></span><span>
+</span><span id="line-90"></span><span id="local-6989586621679213391"><span id="local-6989586621679213392"></span></span><span class="hs-keyword">data</span><span> </span><span id="Wrapper"><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier hs-var">Wrapper</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span id="Wrapper"><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier hs-var">Wrapper</span></a></span></span><span> </span><span class="hs-special">{</span><span>
+</span><span id="line-91"></span><span>  </span><span id="standaloneConf"><span class="annot"><span class="annottext">Wrapper -&gt; StandaloneConf
+</span><a href="StandaloneRun.html#standaloneConf"><span class="hs-identifier hs-var hs-var">standaloneConf</span></a></span></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-type">StandaloneConf</span></a></span><span>
+</span><span id="line-92"></span><span class="hs-special">}</span><span> </span><span class="hs-keyword">deriving</span><span> </span><span class="hs-special">(</span><span id="local-6989586621679213383"><span id="local-6989586621679213385"><span id="local-6989586621679213387"><span class="annot"><span class="annottext">Int -&gt; Wrapper -&gt; ShowS
+[Wrapper] -&gt; ShowS
+Wrapper -&gt; String
+(Int -&gt; Wrapper -&gt; ShowS)
+-&gt; (Wrapper -&gt; String) -&gt; ([Wrapper] -&gt; ShowS) -&gt; Show Wrapper
+forall a.
+(Int -&gt; a -&gt; ShowS) -&gt; (a -&gt; String) -&gt; ([a] -&gt; ShowS) -&gt; Show a
+showList :: [Wrapper] -&gt; ShowS
+$cshowList :: [Wrapper] -&gt; ShowS
+show :: Wrapper -&gt; String
+$cshow :: Wrapper -&gt; String
+showsPrec :: Int -&gt; Wrapper -&gt; ShowS
+$cshowsPrec :: Int -&gt; Wrapper -&gt; ShowS
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var hs-var hs-var hs-var hs-var">Show</span></span></span></span></span><span class="hs-special">,</span><span class="annot"><span class="annottext">(forall x. Wrapper -&gt; Rep Wrapper x)
+-&gt; (forall x. Rep Wrapper x -&gt; Wrapper) -&gt; Generic Wrapper
+forall x. Rep Wrapper x -&gt; Wrapper
+forall x. Wrapper -&gt; Rep Wrapper x
+forall a.
+(forall x. a -&gt; Rep a x) -&gt; (forall x. Rep a x -&gt; a) -&gt; Generic a
+$cto :: forall x. Rep Wrapper x -&gt; Wrapper
+$cfrom :: forall x. Wrapper -&gt; Rep Wrapper x
+</span><span class="hs-identifier hs-var hs-var hs-var hs-var">Generic</span></span><span class="hs-special">)</span><span>
+</span><span id="line-93"></span><span>
+</span><span id="line-94"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213377"><span id="local-6989586621679213379"><span class="annot"><span class="hs-identifier hs-type">FromJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier hs-type">Wrapper</span></a></span></span></span><span>
+</span><span id="line-95"></span><span class="hs-keyword">instance</span><span> </span><span id="local-6989586621679213369"><span id="local-6989586621679213371"><span id="local-6989586621679213373"><span id="local-6989586621679213375"><span class="annot"><span class="hs-identifier hs-type">ToJSON</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier hs-type">Wrapper</span></a></span></span></span></span></span><span>
+</span><span id="line-96"></span><span>
+</span><span id="line-97"></span><span class="annot"><a href="StandaloneRun.html#hardcodedConf"><span class="hs-identifier hs-type">hardcodedConf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span>
+</span><span id="line-98"></span><span id="hardcodedConf"><span class="annot"><span class="annottext">hardcodedConf :: StandaloneParam
+</span><a href="StandaloneRun.html#hardcodedConf"><span class="hs-identifier hs-var hs-var">hardcodedConf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="#local-6989586621679213368"><span class="hs-identifier hs-var">standaloneParam</span></a></span><span> </span><span class="hs-keyword">where</span><span>
+</span><span id="line-99"></span><span>  </span><span id="local-6989586621679213367"><span class="annot"><span class="annottext">spm :: Map String String
+</span><a href="#local-6989586621679213367"><span class="hs-identifier hs-var hs-var">spm</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">[(String, String)] -&gt; Map String String
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">M.fromList</span></span><span> </span><span class="hs-special">[</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.executor.memory&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;2g&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-100"></span><span>                         </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.master&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;spark://127.0.0.1:7077&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-101"></span><span>                         </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.eventLog.enabled&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;false&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-102"></span><span>                         </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.app.name&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;HARDCODED PI EXAMPLE&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-103"></span><span>                         </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.jars&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;/opt/spark-2.4.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.4.0.jar&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-104"></span><span>                         </span><span class="hs-special">,</span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;spark.driver.supervise&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;true&quot;</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span>
+</span><span id="line-105"></span><span>  </span><span id="local-6989586621679213365"><span class="annot"><span class="annottext">envVar :: Maybe (Map String String)
+</span><a href="#local-6989586621679213365"><span class="hs-identifier hs-var hs-var">envVar</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map String String -&gt; Maybe (Map String String)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">[(String, String)] -&gt; Map String String
+forall k a. Ord k =&gt; [(k, a)] -&gt; Map k a
+</span><span class="hs-identifier hs-var">fromList</span></span><span> </span><span class="hs-special">[</span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;abc&quot;</span></span><span class="hs-special">,</span><span class="annot"><span class="hs-string">&quot;aaa&quot;</span></span><span class="hs-special">)</span><span class="hs-special">]</span><span class="hs-special">)</span><span>
+</span><span id="line-106"></span><span>  </span><span id="local-6989586621679213368"><span class="annot"><span class="annottext">standaloneParam :: StandaloneParam
+</span><a href="#local-6989586621679213368"><span class="hs-identifier hs-var hs-var">standaloneParam</span></a></span></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="annottext">StandaloneParam :: String
+-&gt; String
+-&gt; Maybe (Map String String)
+-&gt; String
+-&gt; String
+-&gt; Maybe (Map String String)
+-&gt; [String]
+-&gt; StandaloneParam
+</span><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type hs-type">StandaloneParam</span></a></span><span class="hs-special">{</span><span class="annot"><span class="annottext">action :: String
+</span><a href="StandaloneRun.html#action"><span class="hs-identifier hs-var">action</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-string">&quot;CreateSubmissionRequest&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">appResource :: String
+</span><a href="StandaloneRun.html#appResource"><span class="hs-identifier hs-var">appResource</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-string">&quot;/opt/spark-2.4.0-bin-hadoop2.7/examples/jars/spark-examples_2.11-2.4.0.jar&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">mainClass :: String
+</span><a href="StandaloneRun.html#mainClass"><span class="hs-identifier hs-var">mainClass</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="hs-string">&quot;org.apache.spark.examples.SparkPi&quot;</span></span><span> </span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">sparkProperties :: Maybe (Map String String)
+</span><a href="StandaloneRun.html#sparkProperties"><span class="hs-identifier hs-var">sparkProperties</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Map String String -&gt; Maybe (Map String String)
+forall a. a -&gt; Maybe a
+</span><span class="hs-identifier hs-var">Just</span></span><span> </span><span class="annot"><span class="annottext">Map String String
+</span><a href="#local-6989586621679213367"><span class="hs-identifier hs-var">spm</span></a></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">clientSparkVersion :: String
+</span><a href="StandaloneRun.html#clientSparkVersion"><span class="hs-identifier hs-var">clientSparkVersion</span></a></span><span> </span><span class="hs-glyph">=</span><span>  </span><span class="annot"><span class="hs-string">&quot;2.4.0&quot;</span></span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">appArgs :: [String]
+</span><a href="StandaloneRun.html#appArgs"><span class="hs-identifier hs-var">appArgs</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-special">[</span><span class="annot"><span class="hs-string">&quot;80&quot;</span></span><span class="hs-special">]</span><span class="hs-special">,</span><span> </span><span class="annot"><span class="annottext">environmentVariables :: Maybe (Map String String)
+</span><a href="StandaloneRun.html#environmentVariables"><span class="hs-identifier hs-var">environmentVariables</span></a></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">Maybe (Map String String)
+</span><a href="#local-6989586621679213365"><span class="hs-identifier hs-var">envVar</span></a></span><span class="hs-special">}</span><span>
+</span><span id="line-107"></span><span>
+</span><span id="line-108"></span><span class="annot"><a href="StandaloneRun.html#readConf"><span class="hs-identifier hs-type">readConf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">MaybeT</span></span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-type">StandaloneConf</span></a></span><span>
+</span><span id="line-109"></span><span id="readConf"><span class="annot"><span class="annottext">readConf :: MaybeT IO StandaloneConf
+</span><a href="StandaloneRun.html#readConf"><span class="hs-identifier hs-var hs-var">readConf</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">IO (Maybe StandaloneConf) -&gt; MaybeT IO StandaloneConf
+forall (m :: * -&gt; *) a. m (Maybe a) -&gt; MaybeT m a
+</span><span class="hs-identifier hs-var">MaybeT</span></span><span> </span><span class="annot"><span class="annottext">(IO (Maybe StandaloneConf) -&gt; MaybeT IO StandaloneConf)
+-&gt; IO (Maybe StandaloneConf) -&gt; MaybeT IO StandaloneConf
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-110"></span><span>    </span><span id="local-6989586621679213362"><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679213362"><span class="hs-identifier hs-var">input</span></a></span></span><span> </span><span class="hs-glyph">&lt;-</span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ByteString
+</span><span class="hs-identifier hs-var">B.readFile</span></span><span> </span><span class="annot"><span class="hs-string">&quot;standaloneConf.json&quot;</span></span><span>
+</span><span id="line-111"></span><span>    </span><span class="hs-keyword">let</span><span> </span><span id="local-6989586621679213360"><span class="annot"><span class="annottext">mm :: Maybe Wrapper
+</span><a href="#local-6989586621679213360"><span class="hs-identifier hs-var hs-var">mm</span></a></span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="annot"><span class="annottext">ByteString -&gt; Maybe Wrapper
+forall a. FromJSON a =&gt; ByteString -&gt; Maybe a
+</span><span class="hs-identifier hs-var">decode</span></span><span> </span><span class="annot"><span class="annottext">ByteString
+</span><a href="#local-6989586621679213362"><span class="hs-identifier hs-var">input</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#Wrapper"><span class="hs-identifier hs-type">Wrapper</span></a></span><span>
+</span><span id="line-112"></span><span>    </span><span class="annot"><span class="annottext">Maybe StandaloneConf -&gt; IO (Maybe StandaloneConf)
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">(Wrapper -&gt; StandaloneConf)
+-&gt; Maybe Wrapper -&gt; Maybe StandaloneConf
+forall (f :: * -&gt; *) a b. Functor f =&gt; (a -&gt; b) -&gt; f a -&gt; f b
+</span><span class="hs-identifier hs-var">fmap</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">Wrapper -&gt; StandaloneConf
+</span><a href="StandaloneRun.html#standaloneConf"><span class="hs-identifier hs-var hs-var">standaloneConf</span></a></span><span class="hs-special">)</span><span> </span><span class="annot"><span class="annottext">Maybe Wrapper
+</span><a href="#local-6989586621679213360"><span class="hs-identifier hs-var">mm</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-113"></span><span>
+</span><span id="line-114"></span><span class="annot"><a href="StandaloneRun.html#evalConf"><span class="hs-identifier hs-type">evalConf</span></a></span><span> </span><span class="hs-glyph">::</span><span> </span><span class="annot"><span class="hs-identifier hs-type">Maybe</span></span><span> </span><span class="annot"><a href="StandaloneRun.html#StandaloneConf"><span class="hs-identifier hs-type">StandaloneConf</span></a></span><span> </span><span class="hs-glyph">-&gt;</span><span> </span><span class="annot"><span class="hs-identifier hs-type">IO</span></span><span> </span><span class="hs-special">(</span><span class="annot"><a href="StandaloneRun.html#StandaloneParam"><span class="hs-identifier hs-type">StandaloneParam</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-115"></span><span id="evalConf"><span class="annot"><span class="annottext">evalConf :: Maybe StandaloneConf -&gt; IO StandaloneParam
+</span><a href="StandaloneRun.html#evalConf"><span class="hs-identifier hs-var hs-var">evalConf</span></a></span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-identifier hs-type">Just</span></span><span> </span><span id="local-6989586621679213358"><span class="annot"><span class="annottext">conf :: StandaloneConf
+</span><a href="#local-6989586621679213358"><span class="hs-identifier hs-var">conf</span></a></span></span><span class="hs-special">)</span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-116"></span><span>  </span><span class="annot"><span class="annottext">IO () -&gt; IO ()
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><span class="hs-identifier hs-var">liftIO</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;Loaded StandaloneConf Successfully from the file standaloneConf.json&quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-117"></span><span>  </span><span class="annot"><span class="annottext">StandaloneParam -&gt; IO StandaloneParam
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="annottext">StandaloneConf -&gt; StandaloneParam
+</span><a href="StandaloneRun.html#standaloneParam"><span class="hs-identifier hs-var hs-var">standaloneParam</span></a></span><span> </span><span class="annot"><span class="annottext">StandaloneConf
+</span><a href="#local-6989586621679213358"><span class="hs-identifier hs-var">conf</span></a></span><span class="hs-special">)</span><span>
+</span><span id="line-118"></span><span class="annot"><a href="StandaloneRun.html#evalConf"><span class="hs-identifier hs-var">evalConf</span></a></span><span> </span><span class="annot"><span class="hs-identifier hs-type">Nothing</span></span><span> </span><span class="hs-glyph">=</span><span> </span><span class="hs-keyword">do</span><span>
+</span><span id="line-119"></span><span>  </span><span class="annot"><span class="annottext">IO () -&gt; IO ()
+forall (m :: * -&gt; *) a. MonadIO m =&gt; IO a -&gt; m a
+</span><span class="hs-identifier hs-var">liftIO</span></span><span> </span><span class="annot"><span class="annottext">(IO () -&gt; IO ()) -&gt; IO () -&gt; IO ()
+forall a b. (a -&gt; b) -&gt; a -&gt; b
+</span><span class="hs-operator hs-var">$</span></span><span> </span><span class="annot"><span class="annottext">String -&gt; IO ()
+</span><span class="hs-identifier hs-var">putStrLn</span></span><span> </span><span class="hs-special">(</span><span class="annot"><span class="hs-string">&quot;FAILURE LOADING Conf from the file standaloneConf.json  &quot;</span></span><span class="hs-special">)</span><span>
+</span><span id="line-120"></span><span>  </span><span class="annot"><span class="annottext">StandaloneParam -&gt; IO StandaloneParam
+forall (m :: * -&gt; *) a. Monad m =&gt; a -&gt; m a
+</span><span class="hs-identifier hs-var">return</span></span><span> </span><span class="annot"><span class="annottext">StandaloneParam
+</span><a href="StandaloneRun.html#hardcodedConf"><span class="hs-identifier hs-var">hardcodedConf</span></a></span><span>
+</span><span id="line-121"></span></pre></body></html>
