@@ -15,13 +15,26 @@ https://github.com/sumawa/sa-spark-run/
 * launched via command line
 * has two components (Runner for submitting jobs and Tracker for tracking jobs)
 
-#### Concepts explored
-See [Learnings from HSparkRun](HSPARKRUN_LEARN.md)
-
-        
 ### HSparkRun Spark Execution and Tracking Service
-
 ![alt text](sparkrun.png "HSparkRun executor and Trakcing Service")
+
+### Concepts explored
+
+#### Major themes explored in this project
+* IO Monad
+* Persistent library for Postgres and others, peristent-template for Template Haskell
+* Monad Transformers (MaybeT,ExceptT,ReaderT,StateT, etc)
+* Aeson, aeson-lens,lens for parsing
+* wreq for HTTP client
+* concurrency and async
+* Testing via HSpec
+
+#### Major themes pending
+* Proper concurrency strategies
+* Conduit based streaming and throttling
+* QuickCheck with load testing
+* How to create a haskell library
+* Proper implementation of Algebraic Data Types and assoicated algebra
 
 ### HSparkRun Design Goals
 
