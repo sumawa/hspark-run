@@ -35,6 +35,7 @@ https://github.com/sumawa/sa-spark-run/
 * QuickCheck with load testing
 * How to create a haskell library
 * Proper implementation of Algebraic Data Types and assoicated algebra
+* How to refine using advanced type system, RankNTypes, GADTs
 
 ### HSparkRun Design Goals
 
